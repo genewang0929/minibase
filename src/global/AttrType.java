@@ -12,6 +12,7 @@ public class AttrType {
   public static final int attrReal    = 2;
   public static final int attrSymbol  = 3;
   public static final int attrNull    = 4;
+  public static final int attrVector100D = 5;
   
   public int attrType;
 
@@ -45,6 +46,8 @@ public class AttrType {
       return "attrReal";
     case attrSymbol:
       return "attrSymbol";
+    case attrVector100D:
+      return "attrVector100D";
     case attrNull:
       return "attrNull";
     }

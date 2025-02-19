@@ -28,6 +28,8 @@ public class CondExpr {
    */ 
   public Operand operand1;
   public Operand operand2;
+  // TODO: how to compute distance?
+  public int distance;
   
   /**
    * Pointer to the next element in linked list
@@ -44,6 +46,8 @@ public class CondExpr {
     
     operand1.integer = 0;
     operand2.integer = 0;
+
+    distance = 0;
     
     next = null;
   }

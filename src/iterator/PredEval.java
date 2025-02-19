@@ -89,6 +89,12 @@ public class PredEval
 		      comparison_type.attrType = in2[fld1-1].attrType;
 		    }
 		  break;
+		case AttrType.attrVector100D:
+		  value.setHdr((short)1, val_type, null);
+		  value.set100DVectFld(1, temp_ptr.operand1.vector100D);
+		  tuple1 = value;
+		  comparison_type.attrType = AttrType.attrVector100D;
+		  break;
 		default:
 		  break;
 		}
@@ -121,6 +127,11 @@ public class PredEval
 		  else
 		    tuple2 = t2;
 		  break;
+		case AttrType.attrVector100D:
+		  value.setHdr((short)1, val_type, null);
+		  value.set100DVectFld(1, temp_ptr.operand2.vector100D);
+		  tuple2 = value;
+		  break;
 		default:
 		  break;
 		}
@@ -128,7 +139,7 @@ public class PredEval
 	      
 	      // Got the arguments, now perform a comparison.
 	      try {
-		comp_res = TupleUtils.CompareTupleWithTuple(comparison_type, tuple1, fld1, tuple2, fld2);
+		comp_res = TupleUtils.CompareTupleWithTuple(comparison_type, tuple1, fld1, tuple2, fld2, temp_ptr.distance);
 	      }catch (TupleUtilsException e){
 		throw new PredEvalException (e,"TupleUtilsException is caught by PredEval.java");
 	      }

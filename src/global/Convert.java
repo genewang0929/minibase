@@ -151,6 +151,28 @@ public class Convert{
       value = instr.readChar();
       return value;
     }
+
+  public static Vector100Dtype get100DVectorValue (int position, byte []data)
+          throws java.io.IOException
+  {
+    InputStream in;
+    DataInputStream instr;
+    char value;
+    byte tmp[] = new byte[200];
+    // copy the value from data array out to a tmp byte array
+    System.arraycopy (data, position, tmp, 0, 200);
+
+    /* creates a new data input stream to read data from the
+     * specified input stream
+     */
+    in = new ByteArrayInputStream(tmp);
+    instr = new DataInputStream(in);
+    short[] dimension = new short[100];
+    for (int i = 0; i < 100; i++) {
+      dimension[i] = instr.readShort();
+    }
+    return new Vector100Dtype(dimension);
+  }
   
   
   /**
@@ -301,5 +323,29 @@ public class Convert{
       // copies contents of this byte array into data[]
       System.arraycopy (B, 0, data, position, 2);
       
+    }
+
+    public static void set100DVectorValue(Vector100Dtype value, int position, byte[] data)
+            throws java.io.IOException
+    {
+      /* creates a new data output stream to write data to
+       * underlying output stream
+       */
+
+      OutputStream out = new ByteArrayOutputStream();
+      DataOutputStream outstr = new DataOutputStream (out);
+
+      // write the value to the output stream
+      for (short dimension : value.getDimension()) {
+        outstr.writeShort(dimension);
+      }
+
+      // creates a byte array with this output stream size and the
+      // valid contents of the buffer have been copied into it
+      byte []B = ((ByteArrayOutputStream) out).toByteArray();
+
+      // copies contents of this byte array into data[]
+      System.arraycopy (B, 0, data, position, 200);
+
     }
 }
