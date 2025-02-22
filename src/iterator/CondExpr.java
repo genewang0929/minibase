@@ -28,7 +28,6 @@ public class CondExpr {
    */ 
   public Operand operand1;
   public Operand operand2;
-  // TODO: how to compute distance?
   public int distance;
   
   /**

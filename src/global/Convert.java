@@ -167,7 +167,7 @@ public class Convert{
      */
     in = new ByteArrayInputStream(tmp);
     instr = new DataInputStream(in);
-    short[] dimension = new short[100];
+    int[] dimension = new int[100];
     for (int i = 0; i < 100; i++) {
       dimension[i] = instr.readShort();
     }
@@ -336,7 +336,7 @@ public class Convert{
       DataOutputStream outstr = new DataOutputStream (out);
 
       // write the value to the output stream
-      for (short dimension : value.getDimension()) {
+      for (int dimension : value.getDimension()) {
         outstr.writeShort(dimension);
       }
 

@@ -145,7 +145,6 @@ public class TupleUtils
 						throw new TupleUtilsException(e, "FieldNumberOutOfBoundException is caught by TupleUtils.java");
 					}
 
-					// TODO: return the distance between the two vectors
 					double distance_t1_t2 = 0;
 					for (int i = 0; i < 100; i++) {
 						distance_t1_t2 += Math.pow(t1_v.getDimension()[i] - t2_v.getDimension()[i], 2);
