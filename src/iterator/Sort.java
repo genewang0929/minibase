@@ -44,6 +44,8 @@ public class Sort extends Iterator implements GlobalConst {
   private SpoofIbuf[] i_buf;
   private PageId[] bufs_pids;
   private boolean useBM = true; // flag for whether to use buffer manager
+  private Vector100Dtype target;
+  private int k;
 
   /**
    * Set up for merging the runs.
@@ -179,8 +181,12 @@ public class Sort extends Iterator implements GlobalConst {
       }
     }
 
+    // run k times for top-k elements
+    int run_cnt = 0;
+    int num_runs = k == 0 ? Integer.MAX_VALUE : k;
+
     // maintain a fixed maximum number of elements in the heap
-    while ((p_elems_curr_Q + p_elems_other_Q) < max_elems) {
+    while ((p_elems_curr_Q + p_elems_other_Q) < max_elems && run_cnt < num_runs) {
       try {
         tuple = _am.get_next();  // according to Iterator.java
       } catch (Exception e) {
@@ -196,6 +202,8 @@ public class Sort extends Iterator implements GlobalConst {
 
       pcurr_Q.enq(cur_node);
       p_elems_curr_Q++;
+
+      run_cnt++;
     }
 
     // now the queue is full, starting writing to file while keep trying
@@ -289,7 +297,9 @@ public class Sort extends Iterator implements GlobalConst {
 
       // now check whether the current queue is empty
       else if (p_elems_curr_Q == 0) {
-        while ((p_elems_curr_Q + p_elems_other_Q) < max_elems) {
+        // run k times for top-k elements
+        run_cnt = 0;
+        while ((p_elems_curr_Q + p_elems_other_Q) < max_elems && run_cnt < num_runs) {
           try {
             tuple = _am.get_next();  // according to Iterator.java
           } catch (Exception e) {
@@ -308,6 +318,8 @@ public class Sort extends Iterator implements GlobalConst {
             throw new SortException(e, "Sort.java: UnknowAttrType caught from Q.enq()");
           }
           p_elems_curr_Q++;
+
+          run_cnt++;
         }
       }
 
@@ -477,6 +489,9 @@ public class Sort extends Iterator implements GlobalConst {
         //      lastElem.setHdr(fld_no, junk, s_size);
         lastElem.setStrFld(_sort_fld, s);
         break;
+      case AttrType.attrVector100D:
+        lastElem.set100DVectFld(_sort_fld, target);
+        break;
       default:
         // don't know how to handle attrSymbol, attrNull
         //System.err.println("error in sort.java");
@@ -519,6 +534,9 @@ public class Sort extends Iterator implements GlobalConst {
       case AttrType.attrString:
         //      lastElem.setHdr(fld_no, junk, s_size);
         lastElem.setStrFld(_sort_fld, s);
+        break;
+      case AttrType.attrVector100D:
+        lastElem.set100DVectFld(_sort_fld, target);
         break;
       default:
         // don't know how to handle attrSymbol, attrNull
@@ -635,6 +653,9 @@ public class Sort extends Iterator implements GlobalConst {
     } catch (Exception e) {
       throw new SortException(e, "Sort.java: op_buf.setHdr() failed");
     }
+
+    target = Target;
+    this.k = k;
   }
 
   /**
