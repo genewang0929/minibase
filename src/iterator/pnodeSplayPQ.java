@@ -2,6 +2,7 @@
 package iterator;
 import global.*;
 import java.io.*;
+import java.util.Comparator;
 
 /**
  * Implements a sorted binary tree (extends class pnodePQ).
@@ -10,7 +11,9 @@ import java.io.*;
 public class pnodeSplayPQ extends pnodePQ
 {
 
-  /** the root of the tree */
+	private DistanceComparator dist_comparator; // To hold the DistanceComparator
+
+	/** the root of the tree */
   protected pnodeSplayNode   root;
   /*
   pnodeSplayNode*   leftmost();
@@ -48,6 +51,16 @@ public class pnodeSplayPQ extends pnodePQ
     sort_order = order;
   }
 
+	public pnodeSplayPQ(int fldNo, AttrType fldType, TupleOrder order, DistanceComparator comparator)
+	{
+		root = null;
+		count = 0;
+		fld_no   = fldNo;
+		fld_type = fldType;
+		sort_order = order;
+		dist_comparator = comparator;
+	}
+
   /**
    * Inserts an element into the binary tree.
    * @param item the element to be inserted
@@ -66,9 +79,12 @@ public class pnodeSplayPQ extends pnodePQ
       root = newnode;
       return;
     }
-    
-    int comp = pnodeCMP(item, t.item);
-    
+
+//    int comp = pnodeCMP(item, t.item);
+		int comp = fld_type.attrType == AttrType.attrVector100D ?
+						dist_comparator.compare(item, t.item) :
+						pnodeCMP(item, t.item);
+
     pnodeSplayNode l = pnodeSplayNode.dummy;
     pnodeSplayNode r = pnodeSplayNode.dummy;
      
@@ -82,8 +98,11 @@ public class pnodeSplayPQ extends pnodePQ
 	  comp = 0;
 	  done = true;
 	}
-	else comp = pnodeCMP(item, tr.item);
-	
+//	else comp = pnodeCMP(item, tr.item);
+	else comp = fld_type.attrType == AttrType.attrVector100D ?
+					dist_comparator.compare(item, tr.item) :
+					pnodeCMP(item, tr.item);
+
 	if ((sort_order.tupleOrder == TupleOrder.Ascending && comp <= 0) ||(sort_order.tupleOrder == TupleOrder.Descending && comp >= 0))  {
 	  l.rt = t; t.par = l;
 	  l = t;
@@ -96,8 +115,11 @@ public class pnodeSplayPQ extends pnodePQ
 	    comp = 0;
 	    done = true;
 	  }
-	  else comp = pnodeCMP(item, trr.item);
-	  
+//	  else comp = pnodeCMP(item, trr.item);
+	  else comp = fld_type.attrType == AttrType.attrVector100D ?
+						dist_comparator.compare(item, trr.item) :
+						pnodeCMP(item, trr.item);
+
 	  if ((t.rt = tr.lt) != null) t.rt.par = t;
 	  tr.lt = t; t.par = tr;
 	  l.rt = tr; tr.par = l;
@@ -112,8 +134,11 @@ public class pnodeSplayPQ extends pnodePQ
 	  comp = 0;
 	  done = true;
 	}
-	else comp = pnodeCMP(item, tl.item);
-	
+//	else comp = pnodeCMP(item, tl.item);
+	else comp = fld_type.attrType == AttrType.attrVector100D ?
+					dist_comparator.compare(item, tl.item) :
+					pnodeCMP(item, tl.item);
+
 	if ((sort_order.tupleOrder == TupleOrder.Ascending && comp >= 0) || (sort_order.tupleOrder == TupleOrder.Descending && comp <= 0)) {
 	  r.lt = t; t.par = r;
 	  r = t;
@@ -126,8 +151,11 @@ public class pnodeSplayPQ extends pnodePQ
 	    comp = 0;
 	    done = true;
 	  }
-	  else comp = pnodeCMP(item, tll.item);
-	  
+//	  else comp = pnodeCMP(item, tll.item);
+		else comp = fld_type.attrType == AttrType.attrVector100D ?
+						dist_comparator.compare(item, tll.item) :
+						pnodeCMP(item, tll.item);
+
 	  if ((t.lt = tl.rt) != null) t.lt.par = t;
 	  tl.rt = t; t.par = tl;
 	  r.lt = tl; tl.par = r;
