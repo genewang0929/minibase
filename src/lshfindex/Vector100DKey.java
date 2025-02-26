@@ -1,8 +1,9 @@
 package LSHFIndex;
 
 import global.Vector100Dtype;
+import btree.KeyClass;
 
-public class Vector100DKey {
+public class Vector100DKey extends KeyClass {
 
   private Vector100Dtype key;
 
