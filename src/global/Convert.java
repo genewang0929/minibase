@@ -169,7 +169,7 @@ public class Convert{
     instr = new DataInputStream(in);
     int[] dimension = new int[100];
     for (int i = 0; i < 100; i++) {
-      dimension[i] = instr.readShort();
+      dimension[i] = instr.readInt();
     }
     return new Vector100Dtype(dimension);
   }
@@ -337,7 +337,7 @@ public class Convert{
 
       // write the value to the output stream
       for (int dimension : value.getDimension()) {
-        outstr.writeShort(dimension);
+        outstr.writeInt(dimension);
       }
 
       // creates a byte array with this output stream size and the

@@ -139,10 +139,12 @@ public class PredEval {
           throw new PredEvalException(e, "TupleUtilsException is caught by PredEval.java");
         }
         op_res = false;
-
+        // if comp_res is distance, comp_res must >= 100
+        // else comp_res = {-1, 0, 1}
 				Set<Integer> non_vector100D_res = Set.of(-1, 0, 1);
-				if (!non_vector100D_res.contains(comp_res)) {		// comp_res returns a distance, reset comp_res for following operator comparison
-					if (comp_res > temp_ptr.distance)
+				if (!non_vector100D_res.contains(comp_res)) {
+          comp_res -= 100;  // comp_res returns a distance -> decode comp_res, reset it to {-1, 0, 1}
+          if (comp_res > temp_ptr.distance)
 						comp_res = 1;
 					if (comp_res < temp_ptr.distance)
 						comp_res = -1;
