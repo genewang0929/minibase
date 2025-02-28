@@ -11,6 +11,7 @@ import java.util.*;
 
 import static global.GlobalConst.NUMBUF;
 
+
 // Main class for batch insertion
 public class batchinsert {
 
@@ -19,6 +20,7 @@ public class batchinsert {
             System.err.println("Usage: batchinsert <h> <L> <DATAFILENAME> <DBNAME>");
             System.exit(1);
         }
+
 
         PCounter.initialize();
 
@@ -52,6 +54,7 @@ public class batchinsert {
 
             // The next line contains the attribute types
             String[] typeTokens = br.readLine().trim().split("\\s+");
+
             AttrType[] attrTypes = new AttrType[numAttrs];
             for (int i = 0; i < numAttrs; i++) {
                 int typeCode = Integer.parseInt(typeTokens[i]);
@@ -77,6 +80,7 @@ public class batchinsert {
             // Initialize DB
             SystemDefs sysdef = new SystemDefs(dbpath, 1000, NUMBUF, "Clock" );
 
+
             // Create the heap file for storing tuples (database file)
             Heapfile hf = new Heapfile(dbName);
 
@@ -92,6 +96,7 @@ public class batchinsert {
                 }
 
                 // Create a tuple with numAttrs fields.
+
                 Tuple tuple = new Tuple();
                 short[] Ssizes = new short[1];
                 Ssizes[0] = 30;
@@ -111,6 +116,7 @@ public class batchinsert {
                             tuple.setStrFld(i + 1, strVal);
                             break;
                         case AttrType.attrVector100D: // 100D-vector
+
                             // The line should contain 100 integers separated by whitespace
                             String[] vecTokens = tupleValues[i].trim().split("\\s+");
                             if (vecTokens.length != 100) {
@@ -145,6 +151,7 @@ public class batchinsert {
 //                        }
 //                    }
 //                }
+
             } // end while
             br.close();
 
