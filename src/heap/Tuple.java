@@ -389,6 +389,10 @@ public class Tuple implements GlobalConst {
           strCount++;
           break;
 
+        case AttrType.attrVector100D:
+          incr = 200;
+          break;
+
         default:
           throw new InvalidTypeException(null, "TUPLE: TUPLE_TYPE_ERROR");
       }
@@ -409,6 +413,10 @@ public class Tuple implements GlobalConst {
 
       case AttrType.attrString:
         incr = (short) (strSizes[strCount] + 2);  //strlen in bytes = strlen +2
+        break;
+
+      case AttrType.attrVector100D:
+        incr = 200;
         break;
 
       default:
