@@ -11,12 +11,19 @@ public class Vector100Dtype {
   }
 
   public Vector100Dtype(int[] dimension) {
-    this.dimension = dimension;
+    setDimension(dimension);
   }
   public int[] getDimension() {
     return dimension;
   }
   public void setDimension(int[] dimension) {
-    this.dimension = dimension;
+    for (int i = 0; i < 100; i++) {
+      if (dimension[i] > MAX_VAL)
+        this.dimension[i] = MAX_VAL;
+      else if (dimension[i] < MIN_VAL)
+        this.dimension[i] = MIN_VAL;
+      else
+        this.dimension[i] = dimension[i];
+    }
   }
 }
