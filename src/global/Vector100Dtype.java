@@ -11,6 +11,7 @@ public class Vector100Dtype {
   }
 
   public Vector100Dtype(int[] dimension) {
+    this.dimension = new int[100];
     setDimension(dimension);
   }
   public int[] getDimension() {

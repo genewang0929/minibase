@@ -3,8 +3,7 @@ import global.AttrType;
 import global.RID;
 import global.SystemDefs;
 import global.Vector100Dtype;
-import heap.Heapfile;
-import heap.Tuple;
+import heap.*;
 
 import java.io.*;
 import java.util.*;
@@ -27,18 +26,7 @@ public class batchinsert {
         // Clean up before any operation
         String dbpath = "/tmp/"+System.getProperty("user.name")+".minibase-db";
         String logpath = "/tmp/"+System.getProperty("user.name")+".log";
-        String remove_cmd = "/bin/rm -rf ";
-        String remove_logcmd = remove_cmd + logpath;
-        String remove_dbcmd = remove_cmd + dbpath;
-        String remove_joincmd = remove_cmd + dbpath;
-        try {
-            Runtime.getRuntime().exec(remove_logcmd);
-            Runtime.getRuntime().exec(remove_dbcmd);
-            Runtime.getRuntime().exec(remove_joincmd);
-        }
-        catch (IOException e) {
-            System.err.println (""+e);
-        }
+        cleanup(logpath, dbpath);
 
         try {
             int h = Integer.parseInt(args[0]);
@@ -46,13 +34,8 @@ public class batchinsert {
             String dataFilename = args[2];
             String dbName = args[3];
 
-            // Open the data file for reading
             BufferedReader br = new BufferedReader(new FileReader(dataFilename));
-
-            // The first line is the number of attributes
             int numAttrs = Integer.parseInt(br.readLine().trim());
-
-            // The next line contains the attribute types
             String[] typeTokens = br.readLine().trim().split("\\s+");
 
             AttrType[] attrTypes = new AttrType[numAttrs];
@@ -66,6 +49,8 @@ public class batchinsert {
                     default: throw new IOException("Unknown attribute type code: " + typeCode);
                 }
             }
+
+            save_attrTypes(dbName, numAttrs, attrTypes);
 
             // TODO: For each attribute of type 100D-vector (represented by "4"), create an LSHForest index.
             // The index file name is the DBNAME followed by the attribute number, h, and L.
@@ -82,7 +67,7 @@ public class batchinsert {
 
 
             // Create the heap file for storing tuples (database file)
-            Heapfile hf = new Heapfile(dbName);
+            Heapfile hf = new Heapfile(dbName + ".in");
 
             // Process tuples.
             // Each tuple is stored in the file as n consecutive lines.
@@ -96,44 +81,7 @@ public class batchinsert {
                 }
 
                 // Create a tuple with numAttrs fields.
-
-                Tuple tuple = new Tuple();
-                short[] Ssizes = new short[1];
-                Ssizes[0] = 30;
-                tuple.setHdr((short) numAttrs, attrTypes, Ssizes);
-                for (int i = 0; i < numAttrs; i++) {
-                    switch(attrTypes[i].attrType) {
-                        case AttrType.attrInteger: // integer
-                            int intVal = Integer.parseInt(tupleValues[i].trim());
-                            tuple.setIntFld(i + 1, intVal);
-                            break;
-                        case AttrType.attrReal: // real (float)
-                            float floatVal = Float.parseFloat(tupleValues[i].trim());
-                            tuple.setFloFld(i + 1, floatVal);
-                            break;
-                        case AttrType.attrString: // string
-                            String strVal = tupleValues[i].trim();
-                            tuple.setStrFld(i + 1, strVal);
-                            break;
-                        case AttrType.attrVector100D: // 100D-vector
-
-                            // The line should contain 100 integers separated by whitespace
-                            String[] vecTokens = tupleValues[i].trim().split("\\s+");
-                            if (vecTokens.length != 100) {
-                                System.err.println("Error: Expected 100 integers for 100D-vector, found " + vecTokens.length);
-                                System.exit(1);
-                            }
-                            int[] dims = new int[100];
-                            for (int j = 0; j < 100; j++) {
-                                dims[j] = Integer.parseInt(vecTokens[j].trim());
-                            }
-                            Vector100Dtype vector = new Vector100Dtype(dims);
-                            tuple.set100DVectFld(i + 1, vector);
-                            break;
-                        default:
-                            System.err.println("Unknown attribute type: " + attrTypes[i]);
-                    }
-                }
+                Tuple tuple = create_tuple(numAttrs, attrTypes, tupleValues);
 
                 // Convert the tuple to a byte array and insert it into the heap file.
                 byte[] tupleData = tuple.getTupleByteArray();
@@ -162,6 +110,81 @@ public class batchinsert {
         catch(Exception e) {
             e.printStackTrace();
             System.exit(1);
+        }
+    }
+
+    private static Tuple create_tuple(int numAttrs, AttrType[] attrTypes, String[] tupleValues) throws IOException, InvalidTypeException, InvalidTupleSizeException, FieldNumberOutOfBoundException {
+        Tuple tuple = new Tuple();
+        short[] Ssizes = new short[1];
+        Ssizes[0] = 30;
+        tuple.setHdr((short) numAttrs, attrTypes, Ssizes);
+        for (int i = 0; i < numAttrs; i++) {
+            switch(attrTypes[i].attrType) {
+                case AttrType.attrInteger: // integer
+                    int intVal = Integer.parseInt(tupleValues[i].trim());
+                    tuple.setIntFld(i + 1, intVal);
+                    break;
+                case AttrType.attrReal: // real (float)
+                    float floatVal = Float.parseFloat(tupleValues[i].trim());
+                    tuple.setFloFld(i + 1, floatVal);
+                    break;
+                case AttrType.attrString: // string
+                    String strVal = tupleValues[i].trim();
+                    tuple.setStrFld(i + 1, strVal);
+                    break;
+                case AttrType.attrVector100D: // 100D-vector
+
+                    // The line should contain 100 integers separated by whitespace
+                    String[] vecTokens = tupleValues[i].trim().split("\\s+");
+                    if (vecTokens.length != 100) {
+                        System.err.println("Error: Expected 100 integers for 100D-vector, found " + vecTokens.length);
+                        System.exit(1);
+                    }
+                    int[] dims = new int[100];
+                    for (int j = 0; j < 100; j++) {
+                        dims[j] = Integer.parseInt(vecTokens[j].trim());
+                    }
+                    Vector100Dtype vector = new Vector100Dtype(dims);
+                    tuple.set100DVectFld(i + 1, vector);
+                    break;
+                default:
+                    System.err.println("Unknown attribute type: " + attrTypes[i]);
+            }
+        }
+        return tuple;
+    }
+
+    private static void cleanup(String logpath, String dbpath) {
+        String remove_cmd = "/bin/rm -rf ";
+        String remove_logcmd = remove_cmd + logpath;
+        String remove_dbcmd = remove_cmd + dbpath;
+        String remove_joincmd = remove_cmd + dbpath;
+        try {
+            Runtime.getRuntime().exec(remove_logcmd);
+            Runtime.getRuntime().exec(remove_dbcmd);
+            Runtime.getRuntime().exec(remove_joincmd);
+        }
+        catch (IOException e) {
+            System.err.println (""+e);
+        }
+    }
+
+    private static void save_attrTypes(String dbName, int numAttrs, AttrType[] attrTypes) {
+        try (PrintWriter schemaWriter = new PrintWriter(new FileWriter(dbName + ".schema"))) {
+            schemaWriter.println(numAttrs);
+            for (int i = 0; i < numAttrs; i++) {
+                int typeCode = 0;
+                if (attrTypes[i].attrType == AttrType.attrInteger) typeCode = 1;
+                else if (attrTypes[i].attrType == AttrType.attrReal) typeCode = 2;
+                else if (attrTypes[i].attrType == AttrType.attrString) typeCode = 3;
+                else if (attrTypes[i].attrType == AttrType.attrVector100D) typeCode = 4;
+                schemaWriter.print(typeCode + (i == numAttrs - 1 ? "" : " "));
+            }
+            schemaWriter.println();
+            System.out.println("Schema information saved to " + dbName + ".schema");
+        } catch (IOException e) {
+            System.err.println("Error writing schema file: " + e.getMessage());
+            System.exit(1); // Or handle error appropriately
         }
     }
 }

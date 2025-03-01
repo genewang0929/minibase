@@ -132,7 +132,7 @@ public class DB implements GlobalConst {
         try {
             fp.read(buffer);
             PCounter.readIncrement();
-            System.out.println("Read Count: " + PCounter.rcounter);
+//            System.out.println("Read Count: " + PCounter.rcounter);
         } catch (IOException e) {
             throw new FileIOException(e, "DB file I/O error");
         }
@@ -161,7 +161,7 @@ public class DB implements GlobalConst {
         try {
             fp.write(apage.getpage());
             PCounter.writeIncrement();
-            System.out.println("Write Count: " + PCounter.wcounter);
+//            System.out.println("Write Count: " + PCounter.wcounter);
         } catch (IOException e) {
             throw new FileIOException(e, "DB file I/O error");
         }
