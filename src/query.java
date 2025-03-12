@@ -30,9 +30,9 @@ public class query {
       QuerySpec qs = parseQuerySpec(qsName);
       Vector100Dtype targetVector = readTargetVector(qs.getTargetFileName());
 
-      String dbpath = "/tmp/"+System.getProperty("user.name")+".minibase-db";
-      SystemDefs sysdef = new SystemDefs(dbpath, 1000, numBuf, "Clock" );
-      Heapfile heapFile = new Heapfile(dbName + ".in");
+      String dbpath = "/tmp/"+System.getProperty("user.name")+"."+dbName;
+      SystemDefs sysdef = new SystemDefs(dbpath, 0, numBuf, "Clock" );
+      Heapfile heapFile = new Heapfile("batch_file");
 
       AttrType[] attrTypes = null;
       short[] Ssizes = new short[1];
@@ -86,7 +86,7 @@ public class query {
           rangeCond[1] = null; // Terminator
 
 
-          FileScan fileScan = new FileScan(dbName + ".in", attrTypes, Ssizes, (short)attrTypes.length,
+          FileScan fileScan = new FileScan("batch_file", attrTypes, Ssizes, (short)attrTypes.length,
                   qs.getOutputFields().length, projlist, rangeCond); // Apply condition during scan
 
           Tuple resultTuple;
@@ -101,9 +101,9 @@ public class query {
           order[0] = new TupleOrder(TupleOrder.Ascending);
           order[1] = new TupleOrder(TupleOrder.Descending);
 
-          FileScan fileScan = new FileScan(dbName + ".in", attrTypes, Ssizes, (short)attrTypes.length, qs.getOutputFields().length, projlist, null);
+          FileScan fileScan = new FileScan("batch_file", attrTypes, Ssizes, (short)attrTypes.length, qs.getOutputFields().length, projlist, null);
           Sort sortIterator = new Sort(attrTypes, (short) attrTypes.length, Ssizes,
-                          fileScan, qs.getQueryField(), order[0], 32, numBuf, targetVector, qs.getThreshold());
+                          fileScan, qs.getQueryField(), order[0], 32, 300, targetVector, qs.getThreshold());
 
           Tuple resultTuple;
           while ((resultTuple = sortIterator.get_next()) != null) {
@@ -125,8 +125,8 @@ public class query {
     }
   }
 
-  private static AttrType[] get_attrTypes(String dbName, AttrType[] attrTypes) {
-    try (BufferedReader schemaReader = new BufferedReader(new FileReader(dbName + ".schema"))) {
+  public static AttrType[] get_attrTypes(String dbName, AttrType[] attrTypes) {
+    try (BufferedReader schemaReader = new BufferedReader(new FileReader( "batch_file.schema"))) {
       String line = schemaReader.readLine();
       if (line == null) { throw new IOException("Schema file is empty or corrupted."); }
       int numAttributes = Integer.parseInt(line.trim());

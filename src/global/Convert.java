@@ -158,9 +158,9 @@ public class Convert{
     InputStream in;
     DataInputStream instr;
     char value;
-    byte tmp[] = new byte[200];
+    byte tmp[] = new byte[400];
     // copy the value from data array out to a tmp byte array
-    System.arraycopy (data, position, tmp, 0, 200);
+    System.arraycopy (data, position, tmp, 0, 400);
 
     /* creates a new data input stream to read data from the
      * specified input stream
@@ -345,7 +345,6 @@ public class Convert{
       byte []B = ((ByteArrayOutputStream) out).toByteArray();
 
       // copies contents of this byte array into data[]
-      System.arraycopy (B, 0, data, position, 200);
-
+      System.arraycopy (B, 0, data, position, B.length);
     }
 }

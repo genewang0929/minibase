@@ -390,7 +390,7 @@ public class Tuple implements GlobalConst {
           break;
 
         case AttrType.attrVector100D:
-          incr = 200;
+          incr = 400;
           break;
 
         default:
@@ -416,7 +416,7 @@ public class Tuple implements GlobalConst {
         break;
 
       case AttrType.attrVector100D:
-        incr = 200;
+        incr = 400;
         break;
 
       default:
@@ -488,6 +488,18 @@ public class Tuple implements GlobalConst {
           sval = Convert.getStrValue(fldOffset[i], data, fldOffset[i + 1] - fldOffset[i]);
           System.out.print(sval);
           break;
+          
+        case AttrType.attrVector100D:
+          System.out.println("[");
+          int[] vval = Convert.get100DVectorValue(fldOffset[i], data).getDimension();
+          for (int j = 0; j < vval.length; j++) {
+              System.out.print(vval[j]);
+              if (j != vval.length - 1) {
+                  System.out.print(", ");
+              }
+          }
+          System.out.println("]");
+          break;
 
         case AttrType.attrNull:
         case AttrType.attrSymbol:
@@ -511,6 +523,18 @@ public class Tuple implements GlobalConst {
       case AttrType.attrString:
         sval = Convert.getStrValue(fldOffset[i], data, fldOffset[i + 1] - fldOffset[i]);
         System.out.print(sval);
+        break;
+
+      case AttrType.attrVector100D:
+        System.out.println("[");
+        int[] vval = Convert.get100DVectorValue(fldOffset[i], data).getDimension();
+        for (int j = 0; j < vval.length; j++) {
+          System.out.print(vval[j]);
+          if (j != vval.length - 1) {
+            System.out.print(", ");
+          }
+        }
+        System.out.println("]");
         break;
 
       case AttrType.attrNull:

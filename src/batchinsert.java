@@ -20,19 +20,20 @@ public class batchinsert {
             System.exit(1);
         }
 
-
         PCounter.initialize();
 
-        // Clean up before any operation
-        String dbpath = "/tmp/"+System.getProperty("user.name")+".minibase-db";
-        String logpath = "/tmp/"+System.getProperty("user.name")+".log";
-        cleanup(logpath, dbpath);
 
         try {
             int h = Integer.parseInt(args[0]);
             int L = Integer.parseInt(args[1]);
             String dataFilename = args[2];
             String dbName = args[3];
+            String heapFilename = "batch_file";
+
+            // Clean up before any operation
+            String dbpath = "/tmp/"+System.getProperty("user.name")+"."+dbName;
+            String logpath = "/tmp/"+System.getProperty("user.name")+".log";
+            cleanup(logpath, dbpath);
 
             BufferedReader br = new BufferedReader(new FileReader(dataFilename));
             int numAttrs = Integer.parseInt(br.readLine().trim());
@@ -50,7 +51,7 @@ public class batchinsert {
                 }
             }
 
-            save_attrTypes(dbName, numAttrs, attrTypes);
+            save_attrTypes(heapFilename, numAttrs, attrTypes);
 
             // TODO: For each attribute of type 100D-vector (represented by "4"), create an LSHForest index.
             // The index file name is the DBNAME followed by the attribute number, h, and L.
@@ -63,11 +64,11 @@ public class batchinsert {
 //            }
 
             // Initialize DB
-            SystemDefs sysdef = new SystemDefs(dbpath, 1000, NUMBUF, "Clock" );
+            SystemDefs sysdef = new SystemDefs(dbpath, 500, NUMBUF, "Clock" );
 
 
             // Create the heap file for storing tuples (database file)
-            Heapfile hf = new Heapfile(dbName + ".in");
+            Heapfile hf = new Heapfile(heapFilename);
 
             // Process tuples.
             // Each tuple is stored in the file as n consecutive lines.
@@ -86,7 +87,7 @@ public class batchinsert {
                 // Convert the tuple to a byte array and insert it into the heap file.
                 byte[] tupleData = tuple.getTupleByteArray();
                 RID rid = hf.insertRecord(tupleData);
-                System.out.println("Inserted tuple with RID: " + rid);
+                System.out.printf("Inserted tuple with RID<%d, %d>\n", rid.pageNo.pid, rid.slotNo);
 
                 // TODO: For every attribute of type 100D-vector, update the corresponding LSHForest index.
 //                for (int i = 0; i < numAttrs; i++) {
@@ -102,6 +103,7 @@ public class batchinsert {
 
             } // end while
             br.close();
+            SystemDefs.JavabaseBM.flushAllPages();  // write back to disk
 
             // At the end of batch insertion, output the disk I/O counts.
             System.out.println("Page reads: " + PCounter.rcounter);
@@ -145,6 +147,7 @@ public class batchinsert {
                         dims[j] = Integer.parseInt(vecTokens[j].trim());
                     }
                     Vector100Dtype vector = new Vector100Dtype(dims);
+//                    System.out.println("fldNo: " + (i + 1));
                     tuple.set100DVectFld(i + 1, vector);
                     break;
                 default:
@@ -169,8 +172,8 @@ public class batchinsert {
         }
     }
 
-    private static void save_attrTypes(String dbName, int numAttrs, AttrType[] attrTypes) {
-        try (PrintWriter schemaWriter = new PrintWriter(new FileWriter(dbName + ".schema"))) {
+    private static void save_attrTypes(String heapFilename, int numAttrs, AttrType[] attrTypes) {
+        try (PrintWriter schemaWriter = new PrintWriter(new FileWriter(heapFilename + ".schema"))) {
             schemaWriter.println(numAttrs);
             for (int i = 0; i < numAttrs; i++) {
                 int typeCode = 0;
@@ -181,7 +184,7 @@ public class batchinsert {
                 schemaWriter.print(typeCode + (i == numAttrs - 1 ? "" : " "));
             }
             schemaWriter.println();
-            System.out.println("Schema information saved to " + dbName + ".schema");
+            System.out.println("Schema information saved to " + heapFilename + ".schema");
         } catch (IOException e) {
             System.err.println("Error writing schema file: " + e.getMessage());
             System.exit(1); // Or handle error appropriately
