@@ -80,7 +80,7 @@ public class LSHFIndexFile {
      */
     public void insert(Vector100DKey key, RID rid) throws Exception {
         // Extract the 100D vector from the key.
-        Vector100Dtype vector = key.getVector();
+        Vector100Dtype vector = key.getKey();
         // For each layer, compute the hash code and insert the entry.
         for (int layer = 0; layer < L; layer++) {
             String hashValue = computeHash(vector, layer);
