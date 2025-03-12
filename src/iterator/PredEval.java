@@ -146,7 +146,7 @@ public class PredEval {
           comp_res -= 100;  // comp_res returns a distance -> decode comp_res, reset it to {-1, 0, 1}
           if (comp_res > temp_ptr.distance)
 						comp_res = 1;
-					if (comp_res < temp_ptr.distance)
+					else if (comp_res < temp_ptr.distance)
 						comp_res = -1;
 					else
 						comp_res = 0;
