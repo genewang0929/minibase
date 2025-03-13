@@ -3,7 +3,8 @@ package LSHFIndex;
 import global.Vector100Dtype;
 import heap.Heapfile;
 import global.RID;
-import java.util.Random;
+//import java.util.Random;
+import java.util.*;
 import iterator.Tuple;
 import global.AttrType;
 
@@ -11,6 +12,7 @@ public class LSHFIndexFile {
     private int h; // number of hash functions per layer
     private int L; // number of layers
     private Heapfile indexHeapfile;  // underlying storage for index pages
+    private Random random;
 
     // For each layer, we have h hash functions.
     // Each hash function is represented as an array of random integers (the hyperplane)
@@ -29,6 +31,8 @@ public class LSHFIndexFile {
         this.L = L;
         // Create or open the underlying heap file that stores index pages
         indexHeapfile = new Heapfile(fileName);
+
+        this.random = new Random();
         
         // Initialize hash functions for each layer.
         // For each layer, generate h random hyperplanes (each hyperplane is an array of 100 integers).
@@ -39,7 +43,8 @@ public class LSHFIndexFile {
                 for (int j = 0; j < 100; j++) {
                     // Here we generate random integers in a suitable range.
                     // Adjust the range as needed for your application.
-                    hashFunctions[l][i][j] = rand.nextInt(2001) - 1000;  // values between -1000 and 1000
+                    //hashFunctions[l][i][j] = rand.nextInt(2001) - 1000;  // values between -1000 and 1000
+                    hashFunctions[l][i][j] = (int) random.nextGaussian().
                 }
             }
         }
