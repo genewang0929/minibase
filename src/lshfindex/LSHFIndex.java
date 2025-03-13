@@ -142,4 +142,8 @@ public class LSHFIndexFile {
         // Insert the tuple into the underlying heap file.
         indexHeapfile.insertRecord(tuple.getTupleByteArray());
     }
+
+    public Scan LSHFFileScan() throws Exception {
+        return indexHeapfile.getHeapfile().openScan();
+    }
 }
