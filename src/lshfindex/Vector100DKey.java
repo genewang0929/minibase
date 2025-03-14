@@ -12,11 +12,11 @@ public class Vector100DKey extends KeyClass {
   }
 
   /** Class constructor
-   *  @param     value   the value of the Vector 100D key to be set 
+   *  @param     hashvalue   the value of the Vector 100D key to be set 
    */
-  public Vector100DKey(Vector100Dtype value) 
+  public Vector100DKey(String hashvalue) 
   { 
-    key=new Vector100Dtype(value.getDimension());
+    key=new String(hashvalue);
   }
 
   /** get a copy of the vector 100D key
@@ -24,13 +24,13 @@ public class Vector100DKey extends KeyClass {
    */
   public Vector100Dtype getKey() 
   {
-    return new Vector100Dtype(key.getDimension());
+    return new String(key);
   }
 
   /** set the integer key value
    */  
-  public void setKey(Vector100Dtype value) 
+  public void setKey(String hashvalue) 
   { 
-    key=new Vector100Dtype(value.getDimension());
+    key=new String(hashvalue);
   }
 }
