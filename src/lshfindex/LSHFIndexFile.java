@@ -6,8 +6,14 @@ import btree.KeyClass;
 import java.util.Random;
 import java.util.List;
 import java.util.ArrayList;
-import java.util.Iterator;
+// import java.util.Iterator;
 import iterator.*;
+import heap.Tuple;
+import global.AttrType;
+import java.io.IOException;
+import java.util.List;
+import diskmgr.*;
+import bufmgr.*;
 
 /**
  * LSHFIndexFile implements a fully complete self-tuning LSH-Forest index.
@@ -26,6 +32,7 @@ import iterator.*;
  * from [0, W]. The final key is a concatenation of h such values.
  */
 public class LSHFIndexFile {
+    private String fileName;
     private int h;        // number of hash functions per layer (i.e., number of hash values to concatenate)
     private int L;        // number of layers
     private LSHFPrefixTree[] prefixTrees;  // one prefix tree per layer
@@ -51,6 +58,7 @@ public class LSHFIndexFile {
      * @throws Exception if initialization fails.
      */
     public LSHFIndexFile(String fileName, int h, int L) throws Exception {
+        this.fileName = fileName;
         this.h = h;
         this.L = L;
         this.rand = new Random();
@@ -126,6 +134,82 @@ public class LSHFIndexFile {
             // Insert into the corresponding prefix tree.
             prefixTrees[layer].insert(key, rid);
         }
+    }
+
+    /**
+     * Scans all prefix tree files in the LSH forest and returns a composite FileScan
+     * that iterates over all tuples (each tuple is a <key, RID> pair).
+     * This scan covers the entire LSH forest (all layers).
+     *
+     * @return an Iterator-based scan over all index entries.
+     * @throws Exception if the scan fails.
+     */
+    public Iterator LSHFFileScan() throws Exception {
+        List<Tuple> allTuples = new ArrayList<>();
+        // Define tuple format: we assume each tuple has 3 fields:
+        // Field 1: key (string), Field 2: RID page number (integer), Field 3: RID slot number (integer).
+        AttrType[] in1 = new AttrType[3];
+        in1[0] = new AttrType(AttrType.attrString);
+        in1[1] = new AttrType(AttrType.attrInteger);
+        in1[2] = new AttrType(AttrType.attrInteger);
+        short[] s_sizes = new short[1];
+        s_sizes[0] = 50; // maximum string length (adjust as needed)
+        short len_in1 = 3;
+        int n_out_flds = 3;
+        FldSpec[] proj_list = new FldSpec[3];
+        // Create an identity projection: field 1 maps to field 1, etc.
+        proj_list[0] = new FldSpec(new RelSpec(RelSpec.outer), 1);
+        proj_list[1] = new FldSpec(new RelSpec(RelSpec.outer), 2);
+        proj_list[2] = new FldSpec(new RelSpec(RelSpec.outer), 3);
+        CondExpr[] outFilter = null;  // no filtering
+        
+        // For each layer, open a FileScan and collect all tuples.
+        for (int l = 0; l < L; l++) {
+            String layerFileName = fileName + "_layer" + l;
+            FileScan fs = new FileScan(layerFileName, in1, s_sizes, len_in1, n_out_flds, proj_list, outFilter);
+            Tuple t;
+            while ((t = fs.get_next()) != null) {
+                allTuples.add(t);
+            }
+            fs.close();
+        }
+        // Return a composite scan over all tuples.
+        return new LSHFCompositeScan(allTuples.iterator());
+    }
+    
+    /**
+     * Checks if data has actually been stored on disk for the entire LSH forest.
+     * It does so by opening a FileScan on each layer's heap file and verifying that at least
+     * one tuple is present.
+     *
+     * @return true if any data is found; false if all layers are empty.
+     * @throws Exception if the check fails.
+     */
+    public boolean isDataOnDisk() throws Exception {
+        AttrType[] in1 = new AttrType[3];
+        in1[0] = new AttrType(AttrType.attrString);
+        in1[1] = new AttrType(AttrType.attrInteger);
+        in1[2] = new AttrType(AttrType.attrInteger);
+        short[] s_sizes = new short[1];
+        s_sizes[0] = 50;
+        short len_in1 = 3;
+        int n_out_flds = 3;
+        FldSpec[] proj_list = new FldSpec[3];
+        proj_list[0] = new FldSpec(new RelSpec(RelSpec.outer), 1);
+        proj_list[1] = new FldSpec(new RelSpec(RelSpec.outer), 2);
+        proj_list[2] = new FldSpec(new RelSpec(RelSpec.outer), 3);
+        CondExpr[] outFilter = null;
+        
+        for (int l = 0; l < L; l++) {
+            String layerFileName = fileName + "_layer" + l;
+            FileScan fs = new FileScan(layerFileName, in1, s_sizes, len_in1, n_out_flds, proj_list, outFilter);
+            Tuple t = fs.get_next();
+            fs.close();
+            if (t != null) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
