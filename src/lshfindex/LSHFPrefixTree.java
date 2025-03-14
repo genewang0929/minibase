@@ -5,6 +5,7 @@ import java.util.*;
 import diskmgr.*;
 import bufmgr.*;
 import heap.*;
+import btree.*;
 import iterator.*;
 
 /**
@@ -92,24 +93,23 @@ public class LSHFPrefixTree {
    * @return a List of RIDs.
    * @throws Exception if scanning fails.
    */
-  public List<RID> scanAll() throws Exception {
-    List<RID> result = new ArrayList<>();
+  // public List<RID> scanAll() throws Exception {
+  //   List<RID> result = new ArrayList<>();
     
-    // For simplicity, assume a single leaf page.
-    if (rootId.pid == -1)
-      return result;
+  //   // For simplicity, assume a single leaf page.
+  //   if (rootId.pid == -1)
+  //     return result;
     
-    LSHFLeafPage leaf = new LSHFLeafPage(rootId, keyType);
-    RID rid = new RID();
-    KeyDataEntry entry = leaf.getFirst(rid);
-    while (entry != null) {
-      // In our leaf page, entry.data holds the RID.
-      result.add((RID) entry.data);
-      entry = leaf.getNext(rid);
-    }
-    // In a complete implementation, follow sibling pointers to scan all leaf pages.
-    return result;
-  }
+  //   LSHFLeafPage leaf = new LSHFLeafPage(rootId, keyType);
+  //   RID rid = new RID();
+  //   KeyDataEntry entry = leaf.getFirst(rid);
+  //   while (entry != null) {
+  //     // In our leaf page, entry.data holds the RID.
+  //     result.add((RID) entry.data);
+  //     entry = leaf.getNext(rid);
+  //   }
+  //   return result;
+  // }
   
   /**
    * Performs a range search on the prefix tree.
@@ -122,27 +122,27 @@ public class LSHFPrefixTree {
    * @return a List of RIDs matching the range criteria.
    * @throws Exception if the search fails.
    */
-  public List<RID> rangeSearch(Vector100DKey queryKey, double range) throws Exception {
-    List<RID> result = new ArrayList<>();
-    String q = queryKey.toString();
+  // public List<RID> rangeSearch(Vector100DKey queryKey, double range) throws Exception {
+  //   List<RID> result = new ArrayList<>();
+  //   String q = queryKey.toString();
     
-    // For simplicity, scan only the root leaf page.
-    if (rootId.pid == -1)
-      return result;
+  //   // For simplicity, scan only the root leaf page.
+  //   if (rootId.pid == -1)
+  //     return result;
     
-    LSHFLeafPage leaf = new LSHFLeafPage(rootId, keyType);
-    RID rid = new RID();
-    KeyDataEntry entry = leaf.getFirst(rid);
-    while (entry != null) {
-      String keyStr = entry.key.toString();
-      int dist = hammingDistance(q, keyStr);
-      if (dist <= range) {
-        result.add((RID) entry.data);
-      }
-      entry = leaf.getNext(rid);
-    }
-    return result;
-  }
+  //   LSHFLeafPage leaf = new LSHFLeafPage(rootId, keyType);
+  //   RID rid = new RID();
+  //   KeyDataEntry entry = leaf.getFirst(rid);
+  //   while (entry != null) {
+  //     String keyStr = entry.key.toString();
+  //     int dist = hammingDistance(q, keyStr);
+  //     if (dist <= range) {
+  //       result.add((RID) entry.data);
+  //     }
+  //     entry = leaf.getNext(rid);
+  //   }
+  //   return result;
+  // }
   
   /**
    * Performs a nearest neighbor search on the prefix tree.
@@ -153,38 +153,38 @@ public class LSHFPrefixTree {
    * @return a List of candidate RIDs.
    * @throws Exception if the search fails.
    */
-  public List<RID> nnSearch(Vector100DKey queryKey, int count) throws Exception {
-    List<RID> result = new ArrayList<>();
-    List<Candidate> candidates = new ArrayList<>();
-    String q = queryKey.toString();
+  // public List<RID> nnSearch(Vector100DKey queryKey, int count) throws Exception {
+  //   List<RID> result = new ArrayList<>();
+  //   List<Candidate> candidates = new ArrayList<>();
+  //   String q = queryKey.toString();
     
-    // For simplicity, scan only the root leaf page.
-    if (rootId.pid == -1)
-      return result;
+  //   // For simplicity, scan only the root leaf page.
+  //   if (rootId.pid == -1)
+  //     return result;
     
-    LSHFLeafPage leaf = new LSHFLeafPage(rootId, keyType);
-    RID rid = new RID();
-    KeyDataEntry entry = leaf.getFirst(rid);
-    while (entry != null) {
-      String keyStr = entry.key.toString();
-      int dist = hammingDistance(q, keyStr);
-      candidates.add(new Candidate((RID) entry.data, dist));
-      entry = leaf.getNext(rid);
-    }
+  //   LSHFLeafPage leaf = new LSHFLeafPage(rootId, keyType);
+  //   RID rid = new RID();
+  //   KeyDataEntry entry = leaf.getFirst(rid);
+  //   while (entry != null) {
+  //     String keyStr = entry.key.toString();
+  //     int dist = hammingDistance(q, keyStr);
+  //     candidates.add(new Candidate((RID) entry.data, dist));
+  //     entry = leaf.getNext(rid);
+  //   }
     
-    // Sort candidates by Hamming distance.
-    Collections.sort(candidates, new Comparator<Candidate>() {
-      public int compare(Candidate a, Candidate b) {
-        return Integer.compare(a.distance, b.distance);
-      }
-    });
+  //   // Sort candidates by Hamming distance.
+  //   Collections.sort(candidates, new Comparator<Candidate>() {
+  //     public int compare(Candidate a, Candidate b) {
+  //       return Integer.compare(a.distance, b.distance);
+  //     }
+  //   });
     
-    for (int i = 0; i < Math.min(count, candidates.size()); i++) {
-      result.add(candidates.get(i).rid);
-    }
+  //   for (int i = 0; i < Math.min(count, candidates.size()); i++) {
+  //     result.add(candidates.get(i).rid);
+  //   }
     
-    return result;
-  }
+  //   return result;
+  // }
   
   /**
    * Computes the Hamming distance between two strings.

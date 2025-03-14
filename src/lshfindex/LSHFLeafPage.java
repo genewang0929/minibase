@@ -1,319 +1,169 @@
-package btree;
+package LSHFIndex;
+
 import java.io.*;
-import java.lang.*;
 import global.*;
 import diskmgr.*;
 import heap.*;
+import btree.*;
 
 /**
- * A BTLeafPage is a leaf page on a B+ tree.  It holds abstract 
- * <key, RID> pairs; it doesn't know anything about the keys 
- * (their lengths or their types), instead relying on the abstract
- * interface consisting of BT.java.
+ * LSHFLeafPage is a leaf page in the LSH-Forest prefix tree.
+ * It stores <key, RID> pairs where the key is the hash value (a binary string)
+ * computed from a 100D vector. Overflow pages are handled via BTSortedPage.
  */
-public class BTLeafPage extends BTSortedPage {
-  
-  /** pin the page with pageno, and get the corresponding BTLeafPage,
-   * also it sets the type to be NodeType.LEAF.
-   *@param pageno Input parameter. To specify which page number the
-   *  BTLeafPage will correspond to.
-   *@param keyType either AttrType.attrInteger or AttrType.attrString.
-   *    Input parameter.   
-   *@exception IOException  error from the lower layer
-   *@exception ConstructPageException BTLeafPage constructor error
-   */
-  public BTLeafPage(PageId pageno, int keyType) 
-    throws IOException, 
-     ConstructPageException
-    {
-      super(pageno, keyType);
-      setType(NodeType.LEAF);
-    }
-  
-  /**associate the BTLeafPage instance with the Page instance,
-   * also it sets the type to be NodeType.LEAF. 
-   *@param page  input parameter. To specify which page  the
-   *  BTLeafPage will correspond to.
-   *@param keyType either AttrType.attrInteger or AttrType.attrString.
-   *  Input parameter.    
-   *@exception IOException  error from the lower layer
-   *@exception ConstructPageException BTLeafPage constructor error
-   */
-  public BTLeafPage(Page page, int keyType) 
-    throws IOException, 
-     ConstructPageException
-    {
-      super(page, keyType);
-      setType(NodeType.LEAF);
-    }  
-  
-  /**new a page, associate the BTLeafPage instance with the Page instance,
-   * also it sets the type to be NodeType.LEAF. 
-   *@param keyType either AttrType.attrInteger or AttrType.attrString.
-   *  Input parameter.
-   *@exception IOException  error from the lower layer
-   *@exception ConstructPageException BTLeafPage constructor error
-   */
-  public BTLeafPage( int keyType) 
-    throws IOException, 
-     ConstructPageException
-    {
-      super(keyType);
-      setType(NodeType.LEAF);
-    }  
-  
+public class LSHFLeafPage extends BTSortedPage {
 
-  
-  /** insertRecord
-   * READ THIS DESCRIPTION CAREFULLY. THERE ARE TWO RIDs
-   * WHICH MEAN TWO DIFFERENT THINGS.
-   * Inserts a key, rid value into the leaf node. This is
-   * accomplished by a call to SortedPage::insertRecord()
-   *  Parameters:
-   *@param key - the key value of the data record. Input parameter.
-   *@param dataRid - the rid of the data record. This is
-   *               stored on the leaf page along with the
-   *               corresponding key value. Input parameter.
-   *
-   *@return - the rid of the inserted leaf record data entry,
-   *           i.e., the <key, dataRid> pair.
-   *@exception  LeafInsertRecException error when insert
-   */   
-  public RID insertRecord(KeyClass key, RID dataRid) 
-    throws  LeafInsertRecException
-    {
-      KeyDataEntry entry;
-      
-      try {
-        entry = new KeyDataEntry( key,dataRid);
-  
-        return insertRecord(entry);
-      }
-      catch(Exception e) {
-        throw new LeafInsertRecException(e, "insert record failed");
-      }
-    } // end of insertRecord
-  
-  
-  /**  Iterators. 
-   * One of the two functions: getFirst and getNext
-   * which  provide an iterator interface to the records on a BTLeafPage.
-   *@param rid It will be modified and the first rid in the leaf page
-   * will be passed out by itself. Input and Output parameter.
-   *@return return the first KeyDataEntry in the leaf page.
-   * null if no more record
-   *@exception  IteratorException iterator error
-   */
-  public KeyDataEntry getFirst(RID rid) 
-    throws  IteratorException
-    {
-      
-      KeyDataEntry  entry; 
-      
-      try {
-        rid.pageNo = getCurPage();
-        rid.slotNo = 0; // begin with first slot
-  
-        if ( getSlotCnt() <= 0) {
-          return null;
-        }
-
-        entry=BT.getEntryFromBytes(getpage(), getSlotOffset(0), getSlotLength(0),
-           keyType, NodeType.LEAF);
-  
-        return entry;
-      }
-      catch (Exception e) {
-  throw new IteratorException(e, "Get first entry failed");
-      }
-    } // end of getFirst
-
- 
-   /**Iterators.  
-    * One of the two functions: getFirst and getNext which  provide an
-    * iterator interface to the records on a BTLeafPage.
-    *@param rid It will be modified and the next rid will be passed out 
-    *by itself. Input and Output parameter.
-    *@return return the next KeyDataEntry in the leaf page. 
-    *null if no more record.
-    *@exception IteratorException iterator error
-    */
-
-   public KeyDataEntry getNext (RID rid)
-     throws  IteratorException
-   {
-     KeyDataEntry  entry; 
-     int i;
-     try{
-       rid.slotNo++; //must before any return;
-       i=rid.slotNo;
-       
-       if ( rid.slotNo >= getSlotCnt())
-       {
-   return null;
-       }
-       
-       entry=BT.getEntryFromBytes(getpage(),getSlotOffset(i), getSlotLength(i),
-                  keyType, NodeType.LEAF);
-       
-       return entry;
-     } 
-     catch (Exception e) {
-       throw new IteratorException(e,"Get next entry failed");
-     }
-  }
-  
-  
-  
   /**
-   * getCurrent returns the current record in the iteration; it is like
-   * getNext except it does not advance the iterator.
-   *@param rid  the current rid. Input and Output parameter. But
-   *    Output=Input.
-   *@return return the current KeyDataEntry
-   *@exception  IteratorException iterator error
-   */ 
-   public KeyDataEntry getCurrent (RID rid)
-       throws  IteratorException
-   {  
-     rid.slotNo--;
-     return getNext(rid);
-   }
-  
-  
-  /** 
-   * delete a data entry in the leaf page.
-   *@param dEntry the entry will be deleted in the leaf page. Input parameter.
-   *@return true if deleted; false if no dEntry in the page
-   *@exception LeafDeleteException error when delete
+   * Constructs an LSHFLeafPage by pinning the page with the given PageId.
+   * Sets the node type to LEAF.
+   * @param pageno the PageId of the leaf page.
+   * @param keyType the type of key (should be AttrType.attrString for our hash keys).
+   * @throws IOException if an I/O error occurs.
+   * @throws ConstructPageException if construction fails.
    */
-   public boolean delEntry (KeyDataEntry dEntry)
-     throws  LeafDeleteException
-    {
-      KeyDataEntry  entry;
-      RID rid=new RID(); 
-      
-      try {
-  for(entry = getFirst(rid); entry!=null; entry=getNext(rid)) 
-    {  
-      if ( entry.equals(dEntry) ) {
-        if ( super.deleteSortedRecord( rid ) == false )
-    throw new LeafDeleteException(null, "Delete record failed");
-        return true;
-      }
-      
-   }
-  return false;
-      } 
-      catch (Exception e) {
-  throw new LeafDeleteException(e, "delete entry failed");
-      }
-      
-    } // end of delEntry
+  public LSHFLeafPage(PageId pageno, int keyType)
+      throws IOException, ConstructPageException {
+    super(pageno, keyType);
+    setType(NodeType.LEAF);
+  }
 
-  /*used in full delete 
-   *@param leafPage the sibling page of this. Input parameter.
-   *@param parentIndexPage the parant of leafPage and this. Input parameter.
-   *@param direction -1 if "this" is left sibling of leafPage ; 
-   *      1 if "this" is right sibling of leafPage. Input parameter.
-   *@param deletedKey the key which was already deleted, and cause 
-   *        redistribution. Input parameter.
-   *@exception LeafRedistributeException
-   *@return true if redistrbution success. false if we can not redistribute them.
+  /**
+   * Constructs an LSHFLeafPage by associating it with an existing Page.
+   * Sets the node type to LEAF.
+   * @param page the Page instance.
+   * @param keyType the type of key.
+   * @throws IOException if an I/O error occurs.
+   * @throws ConstructPageException if construction fails.
    */
-  boolean redistribute(BTLeafPage leafPage, BTIndexPage parentIndexPage, 
-           int direction, KeyClass deletedKey)
-    throws LeafRedistributeException
-    {
-      boolean st;
-      // assertion: leafPage pinned
-      try {
-  if (direction ==-1) { // 'this' is the left sibling of leafPage
-    if ( (getSlotLength(getSlotCnt()-1) + available_space()+ 8 /*  2*sizeof(slot) */) > 
-         ((MAX_SPACE-DPFIXED)/2)) {
-            // cannot spare a record for its underflow sibling
-            return false;
-    }
-    else {
-            // move the last record to its sibling
-      
-            // get the last record 
-            KeyDataEntry lastEntry;
-            lastEntry=BT.getEntryFromBytes(getpage(),getSlotOffset(getSlotCnt()-1)
-             ,getSlotLength(getSlotCnt()-1), keyType, NodeType.LEAF);
-      
-      
-            //get its sibling's first record's key for adjusting parent pointer
-            RID dummyRid=new RID();
-            KeyDataEntry firstEntry;
-            firstEntry=leafPage.getFirst(dummyRid);
+  public LSHFLeafPage(Page page, int keyType)
+      throws IOException, ConstructPageException {
+    super(page, keyType);
+    setType(NodeType.LEAF);
+  }
 
-            // insert it into its sibling            
-            leafPage.insertRecord(lastEntry);
-            
-            // delete the last record from the old page
-            RID delRid=new RID();
-            delRid.pageNo = getCurPage();
-            delRid.slotNo = getSlotCnt()-1;
-            if ( deleteSortedRecord(delRid) == false )
-        throw new LeafRedistributeException(null, "delete record failed");
+  /**
+   * Constructs a new LSHFLeafPage (allocating a new page).
+   * Sets the node type to LEAF.
+   * @param keyType the type of key.
+   * @throws IOException if an I/O error occurs.
+   * @throws ConstructPageException if construction fails.
+   */
+  public LSHFLeafPage(int keyType)
+      throws IOException, ConstructPageException {
+    super(keyType);
+    setType(NodeType.LEAF);
+  }
 
-      
-            // adjust the entry pointing to sibling in its parent
-            if (deletedKey != null)
-                st = parentIndexPage.adjustKey(lastEntry.key, deletedKey);
-            else 
-                st = parentIndexPage.adjustKey(lastEntry.key,
-                                            firstEntry.key);
-            if (st == false) 
-        throw new LeafRedistributeException(null, "adjust key failed");
-            return true;
+  /**
+   * Inserts a <key, RID> entry into the leaf page.
+   * @param key the key (hash value) to be inserted.
+   * @param dataRid the RID of the data record.
+   * @return the RID where the record was inserted; null if no space is available.
+   * @throws LeafInsertRecException if insertion fails.
+   */
+  public RID insertRecord(KeyClass key, RID dataRid)
+      throws LeafInsertRecException {
+    KeyDataEntry entry;
+    try {
+      entry = new KeyDataEntry(key, dataRid);
+      return super.insertRecord(entry);
+    } catch (Exception e) {
+      throw new LeafInsertRecException(e, "insert record failed");
     }
   }
-  else { // 'this' is the right sibling of pptr
-    if ( (getSlotLength(0) + available_space()+ 8) > ((MAX_SPACE-DPFIXED)/2)) {
-            // cannot spare a record for its underflow sibling
-            return false;
-    }
-    else {
-            // move the first record to its sibling
-      
-            // get the first record
-            KeyDataEntry firstEntry;
-            firstEntry=BT.getEntryFromBytes(getpage(), getSlotOffset(0),
-              getSlotLength(0), keyType,
-              NodeType.LEAF);
-      
-            // insert it into its sibling
-            RID dummyRid=new RID();
-            leafPage.insertRecord(firstEntry);
-            
 
-            // delete the first record from the old page
-            RID delRid=new RID();
-            delRid.pageNo = getCurPage();
-            delRid.slotNo = 0;
-            if ( deleteSortedRecord(delRid) == false) 
-        throw new LeafRedistributeException(null, "delete record failed");  
-      
-      
-            // get the current first record of the old page
-            // for adjusting parent pointer.
-            KeyDataEntry tmpEntry;
-            tmpEntry = getFirst(dummyRid);
-         
-            
-            // adjust the entry pointing to itself in its parent
-            st = parentIndexPage.adjustKey(tmpEntry.key, firstEntry.key);
-            if( st==false) 
-        throw new LeafRedistributeException(null, "adjust key failed"); 
-            return true;
+  /**
+   * Returns the first key-data entry in the leaf page.
+   * @param rid an output parameter that will hold the RID of the first entry.
+   * @return the first KeyDataEntry, or null if the page is empty.
+   * @throws IteratorException if an iteration error occurs.
+   */
+  public KeyDataEntry getFirst(RID rid)
+      throws IteratorException {
+    KeyDataEntry entry;
+    try {
+      rid.pageNo = getCurPage();
+      rid.slotNo = 0; // begin with first slot
+      if (getSlotCnt() <= 0) {
+        return null;
+      }
+      entry = BT.getEntryFromBytes(getpage(),
+                                   getSlotOffset(0),
+                                   getSlotLength(0),
+                                   this.getKeyType(),
+                                   NodeType.LEAF);
+      return entry;
+    } catch (Exception e) {
+      throw new IteratorException(e, "Get first entry failed");
     }
   }
+
+  /**
+   * Returns the next key-data entry in the leaf page.
+   * @param rid an input/output parameter containing the current RID; it is advanced.
+   * @return the next KeyDataEntry, or null if no more entries exist.
+   * @throws IteratorException if an iteration error occurs.
+   */
+  public KeyDataEntry getNext(RID rid)
+      throws IteratorException {
+    KeyDataEntry entry;
+    int i;
+    try {
+      rid.slotNo++; // advance to the next slot
+      i = rid.slotNo;
+      if (rid.slotNo >= getSlotCnt()) {
+        return null;
       }
-      catch (Exception e) {
-  throw new LeafRedistributeException(e, "redistribute failed");
-      } 
-    } // end of redistribute
-  
-} // end of BTLeafPage
+      entry = BT.getEntryFromBytes(getpage(),
+                                   getSlotOffset(i),
+                                   getSlotLength(i),
+                                   this.getKeyType(),
+                                   NodeType.LEAF);
+      return entry;
+    } catch (Exception e) {
+      throw new IteratorException(e, "Get next entry failed");
+    }
+  }
+
+  /**
+   * Returns the current record in the iteration without advancing the iterator.
+   * @param rid the current RID; input and output parameter.
+   * @return the current KeyDataEntry.
+   * @throws IteratorException if an iteration error occurs.
+   */
+  public KeyDataEntry getCurrent(RID rid)
+      throws IteratorException {
+    // Decrement slotNo temporarily to re-read the current entry.
+    rid.slotNo--;
+    return getNext(rid);
+  }
+
+  /**
+   * Deletes a key-data entry from the leaf page.
+   * @param dEntry the entry to be deleted.
+   * @return true if the deletion was successful; false if the entry was not found.
+   * @throws LeafDeleteException if deletion fails.
+   */
+  public boolean delEntry(KeyDataEntry dEntry)
+      throws LeafDeleteException {
+    KeyDataEntry entry;
+    RID rid = new RID();
+    try {
+      for (entry = getFirst(rid); entry != null; entry = getNext(rid)) {
+        if (entry.equals(dEntry)) {
+          if (super.deleteSortedRecord(rid) == false)
+            throw new LeafDeleteException(null, "Delete record failed");
+          return true;
+        }
+      }
+      return false;
+    } catch (Exception e) {
+      throw new LeafDeleteException(e, "delete entry failed");
+    }
+  }
+
+  // Wrapper for protected method
+  // public int getRecordCount() {
+  //   return super.numberOfRecords();
+  // }
+}

@@ -92,7 +92,7 @@ public class LSHFIndexPage extends BTSortedPage {
     try {
       for (i = getSlotCnt() - 1; i >= 0; i--) {
         entry = BT.getEntryFromBytes(getpage(), getSlotOffset(i), 
-                                     getSlotLength(i), keyType, NodeType.INDEX);
+                                     getSlotLength(i), this.getKeyType(), NodeType.INDEX);
         if (BT.keyCompare(key, entry.key) >= 0) {
           return ((IndexData)entry.data).getData();
         }
@@ -120,7 +120,7 @@ public class LSHFIndexPage extends BTSortedPage {
         return null;
       }
       entry = BT.getEntryFromBytes(getpage(), getSlotOffset(0), 
-                                   getSlotLength(0), keyType, NodeType.INDEX);
+                                   getSlotLength(0), this.getKeyType(), NodeType.INDEX);
       return entry;
     } catch (Exception e) {
       throw new IteratorException(e, "Get first entry failed");
@@ -144,7 +144,7 @@ public class LSHFIndexPage extends BTSortedPage {
         return null;
       }
       entry = BT.getEntryFromBytes(getpage(), getSlotOffset(i), 
-                                   getSlotLength(i), keyType, NodeType.INDEX);
+                                   getSlotLength(i), this.getKeyType(), NodeType.INDEX);
       return entry;
     } catch (Exception e) {
       throw new IteratorException(e, "Get next entry failed");
