@@ -390,7 +390,7 @@ public class Tuple implements GlobalConst {
           break;
 
         case AttrType.attrVector100D:
-          incr = 400;
+          incr = 200;
           break;
 
         default:
@@ -416,7 +416,7 @@ public class Tuple implements GlobalConst {
         break;
 
       case AttrType.attrVector100D:
-        incr = 400;
+        incr = 200;
         break;
 
       default:
@@ -491,7 +491,7 @@ public class Tuple implements GlobalConst {
           
         case AttrType.attrVector100D:
           System.out.println("[");
-          int[] vval = Convert.get100DVectorValue(fldOffset[i], data).getDimension();
+          short[] vval = Convert.get100DVectorValue(fldOffset[i], data).getDimension();
           for (int j = 0; j < vval.length; j++) {
               System.out.print(vval[j]);
               if (j != vval.length - 1) {
@@ -527,7 +527,7 @@ public class Tuple implements GlobalConst {
 
       case AttrType.attrVector100D:
         System.out.println("[");
-        int[] vval = Convert.get100DVectorValue(fldOffset[i], data).getDimension();
+        short[] vval = Convert.get100DVectorValue(fldOffset[i], data).getDimension();
         for (int j = 0; j < vval.length; j++) {
           System.out.print(vval[j]);
           if (j != vval.length - 1) {

@@ -18,10 +18,10 @@ class DistanceComparator implements Comparator<pnode> {
     this.target = target;
   }
 
-  public int calculateDistance(Tuple tuple) throws SortException {
+  public short calculateDistance(Tuple tuple) throws SortException {
     try {
       Vector100Dtype vector100Dtype = tuple.get100DVectFld(fld_no);
-      int dist = TupleUtils.getDistance(vector100Dtype, target);
+      short dist = TupleUtils.getDistance(vector100Dtype, target);
       return dist;
     } catch (IOException | FieldNumberOutOfBoundException ex) {
       throw new RuntimeException(ex);
@@ -32,8 +32,8 @@ class DistanceComparator implements Comparator<pnode> {
   @Override
   public int compare(pnode node1, pnode node2) {
     try {
-      int distance1 = calculateDistance(node1.tuple);
-      int distance2 = calculateDistance(node2.tuple);
+      short distance1 = calculateDistance(node1.tuple);
+      short distance2 = calculateDistance(node2.tuple);
 
       if (distance1 < distance2) {
         return -1; // node1 is "smaller" (closer to target)

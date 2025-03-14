@@ -99,13 +99,13 @@ public class TupleUtils {
     }
   }
 
-  public static int getDistance(Vector100Dtype t1_v, Vector100Dtype t2_v) {
-    int distance_t1_t2 = 0;
+  public static short getDistance(Vector100Dtype t1_v, Vector100Dtype t2_v) {
+    short distance_t1_t2 = 0;
     for (int i = 0; i < 100; i++) {
       distance_t1_t2 += Math.pow(t1_v.getDimension()[i] - t2_v.getDimension()[i], 2);
     }
-    distance_t1_t2 = (int) Math.sqrt(distance_t1_t2);
-    return (int) Math.sqrt(distance_t1_t2);
+    distance_t1_t2 = (short) Math.sqrt(distance_t1_t2);
+    return (short) Math.sqrt(distance_t1_t2);
   }
 
 

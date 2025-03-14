@@ -158,18 +158,18 @@ public class Convert{
     InputStream in;
     DataInputStream instr;
     char value;
-    byte tmp[] = new byte[400];
+    byte tmp[] = new byte[200];
     // copy the value from data array out to a tmp byte array
-    System.arraycopy (data, position, tmp, 0, 400);
+    System.arraycopy (data, position, tmp, 0, 200);
 
     /* creates a new data input stream to read data from the
      * specified input stream
      */
     in = new ByteArrayInputStream(tmp);
     instr = new DataInputStream(in);
-    int[] dimension = new int[100];
+    short[] dimension = new short[100];
     for (int i = 0; i < 100; i++) {
-      dimension[i] = instr.readInt();
+      dimension[i] = instr.readShort();
     }
     return new Vector100Dtype(dimension);
   }
@@ -337,7 +337,7 @@ public class Convert{
 
       // write the value to the output stream
       for (int dimension : value.getDimension()) {
-        outstr.writeInt(dimension);
+        outstr.writeShort(dimension);
       }
 
       // creates a byte array with this output stream size and the

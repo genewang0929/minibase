@@ -31,7 +31,8 @@ public class query {
       Vector100Dtype targetVector = readTargetVector(qs.getTargetFileName());
 
       String dbpath = "/tmp/"+System.getProperty("user.name")+"."+dbName;
-      SystemDefs sysdef = new SystemDefs(dbpath, 0, numBuf, "Clock" );
+      SystemDefs.MINIBASE_RESTART_FLAG = true;
+      SystemDefs sysdef = new SystemDefs(dbpath, 500, numBuf, "Clock" );
       Heapfile heapFile = new Heapfile("batch_file");
 
       AttrType[] attrTypes = null;
@@ -103,7 +104,7 @@ public class query {
 
           FileScan fileScan = new FileScan("batch_file", attrTypes, Ssizes, (short)attrTypes.length, qs.getOutputFields().length, projlist, null);
           Sort sortIterator = new Sort(attrTypes, (short) attrTypes.length, Ssizes,
-                          fileScan, qs.getQueryField(), order[0], 32, 300, targetVector, qs.getThreshold());
+                          fileScan, qs.getQueryField(), order[0], 32, 500, targetVector, qs.getThreshold());
 
           Tuple resultTuple;
           while ((resultTuple = sortIterator.get_next()) != null) {
@@ -221,9 +222,9 @@ public class query {
     if (tokens.length != 100) {
       throw new IllegalArgumentException("Target vector file must contain 100 integers.");
     }
-    int[] vector = new int[100];
+    short[] vector = new short[100];
     for (int i = 0; i < 100; i++) {
-      vector[i] = Integer.parseInt(tokens[i]);
+      vector[i] = Short.parseShort(tokens[i]);
     }
     return new Vector100Dtype(vector);
   }
