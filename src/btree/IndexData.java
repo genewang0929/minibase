@@ -14,12 +14,12 @@ public class IndexData extends DataClass {
   /** Class constructor
    *  @param     pageNo  the page number
    */
-  IndexData(PageId  pageNo) { pageId = new PageId(pageNo.pid);};  
+  public IndexData(PageId  pageNo) { pageId = new PageId(pageNo.pid);};  
 
   /** Class constructor
    *  @param     pageNo  the page number
    */
-  IndexData(int  pageNo) { pageId = new PageId(pageNo);};  
+  public IndexData(int  pageNo) { pageId = new PageId(pageNo);};  
 
 
   /** get a copy of the pageNo
