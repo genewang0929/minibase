@@ -25,9 +25,9 @@ public class IndexData extends DataClass {
   /** get a copy of the pageNo
   *  @return the reference of the copy 
   */
-  protected PageId getData() {return new PageId(pageId.pid); };
+  public PageId getData() {return new PageId(pageId.pid); };
 
   /** set the pageNo 
    */ 
-  protected void setData(PageId pageNo) {pageId= new PageId(pageNo.pid);};
+  public void setData(PageId pageNo) {pageId= new PageId(pageNo.pid);};
 }   
