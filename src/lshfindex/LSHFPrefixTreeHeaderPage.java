@@ -1,6 +1,7 @@
 package LSHFIndex;
 
 import java.io.*;
+import btree.*;
 import diskmgr.*;
 import bufmgr.*;
 import global.*;

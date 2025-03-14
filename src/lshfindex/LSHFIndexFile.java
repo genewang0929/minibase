@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.util.List;
 import diskmgr.*;
 import bufmgr.*;
+import java.io.*;
 
 /**
  * LSHFIndexFile implements a fully complete self-tuning LSH-Forest index.
@@ -264,4 +265,19 @@ public class LSHFIndexFile {
     //     }
     //     return new LSHFIndexScan(result.iterator());
     // }
+
+    /** Close the LSHF index file.  Unpin header page.
+     *@exception PageUnpinnedException  error from the lower layer
+     *@exception InvalidFrameNumberException  error from the lower layer
+     *@exception HashEntryNotFoundException  error from the lower layer
+     *@exception ReplacerException  error from the lower layer
+     */
+    public void close()
+	throws PageUnpinnedException, InvalidFrameNumberException, HashEntryNotFoundException, ReplacerException, IOException
+    {
+      for (int l = 0; l < L; l++) {
+        prefixTrees[l].closePrefixTree();
+	System.out.println("Prefix Tree " + l + " closed.");
+      }
+    }
 }

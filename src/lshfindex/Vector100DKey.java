@@ -5,7 +5,7 @@ import btree.KeyClass;
 
 public class Vector100DKey extends KeyClass {
 
-  private Vector100Dtype key;
+  private String key;
 
   public String toString(){
      return key.toString();

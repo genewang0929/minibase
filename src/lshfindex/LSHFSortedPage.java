@@ -4,7 +4,7 @@ import java.io.*;
 import global.*;
 import diskmgr.*;
 import heap.*;
-import btree.ConstructPageException;
+import btree.*;
 
 /**
  * LSHFSortedPage class

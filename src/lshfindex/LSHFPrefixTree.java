@@ -7,6 +7,7 @@ import bufmgr.*;
 import heap.*;
 import btree.*;
 import iterator.*;
+import java.io.*;
 
 /**
  * LSHFPrefixTree implements a prefix tree for the LSH-Forest.
@@ -211,5 +212,13 @@ public class LSHFPrefixTree {
       this.rid = rid;
       this.distance = distance;
     }
+  }
+
+    public void closePrefixTree() throws PageUnpinnedException, InvalidFrameNumberException, HashEntryNotFoundException, ReplacerException, IOException
+  {
+    if ( header!=null) {
+      SystemDefs.JavabaseBM.unpinPage(header.getPageId(), true);
+      header=null;
+    }  
   }
 }
