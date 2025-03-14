@@ -192,7 +192,7 @@ public class BTSortedPage  extends HFPage{
    *@param return the number of records.
    *@exception IOException I/O errors
    */
-  protected int numberOfRecords() 
+  public int numberOfRecords() 
     throws IOException
     {
       return getSlotCnt();
