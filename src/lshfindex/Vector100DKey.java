@@ -22,7 +22,7 @@ public class Vector100DKey extends KeyClass {
   /** get a copy of the vector 100D key
    *  @return the reference of the copy 
    */
-  public Vector100Dtype getKey() 
+  public String getKey() 
   {
     return new String(key);
   }

@@ -11,7 +11,7 @@ import btree.*;
  * It stores <key, RID> pairs where the key is the hash value (a binary string)
  * computed from a 100D vector. Overflow pages are handled via BTSortedPage.
  */
-public class LSHFLeafPage extends BTSortedPage {
+public class LSHFLeafPage extends LSHFSortedPage {
 
   /**
    * Constructs an LSHFLeafPage by pinning the page with the given PageId.
@@ -63,9 +63,9 @@ public class LSHFLeafPage extends BTSortedPage {
    */
   public RID insertRecord(KeyClass key, RID dataRid)
       throws LeafInsertRecException {
-    KeyDataEntry entry;
+    LSHFKeyDataEntry entry;
     try {
-      entry = new KeyDataEntry(key, dataRid);
+      entry = new LSHFKeyDataEntry(key, dataRid);
       return super.insertRecord(entry);
     } catch (Exception e) {
       throw new LeafInsertRecException(e, "insert record failed");
@@ -78,16 +78,16 @@ public class LSHFLeafPage extends BTSortedPage {
    * @return the first KeyDataEntry, or null if the page is empty.
    * @throws IteratorException if an iteration error occurs.
    */
-  public KeyDataEntry getFirst(RID rid)
+  public LSHFKeyDataEntry getFirst(RID rid)
       throws IteratorException {
-    KeyDataEntry entry;
+    LSHFKeyDataEntry entry;
     try {
       rid.pageNo = getCurPage();
       rid.slotNo = 0; // begin with first slot
       if (getSlotCnt() <= 0) {
         return null;
       }
-      entry = BT.getEntryFromBytes(getpage(),
+      entry = LSHF.getEntryFromBytes(getpage(),
                                    getSlotOffset(0),
                                    getSlotLength(0),
                                    this.getKeyType(),
@@ -104,9 +104,9 @@ public class LSHFLeafPage extends BTSortedPage {
    * @return the next KeyDataEntry, or null if no more entries exist.
    * @throws IteratorException if an iteration error occurs.
    */
-  public KeyDataEntry getNext(RID rid)
+  public LSHFKeyDataEntry getNext(RID rid)
       throws IteratorException {
-    KeyDataEntry entry;
+    LSHFKeyDataEntry entry;
     int i;
     try {
       rid.slotNo++; // advance to the next slot
@@ -114,7 +114,7 @@ public class LSHFLeafPage extends BTSortedPage {
       if (rid.slotNo >= getSlotCnt()) {
         return null;
       }
-      entry = BT.getEntryFromBytes(getpage(),
+      entry = LSHF.getEntryFromBytes(getpage(),
                                    getSlotOffset(i),
                                    getSlotLength(i),
                                    this.getKeyType(),
@@ -131,7 +131,7 @@ public class LSHFLeafPage extends BTSortedPage {
    * @return the current KeyDataEntry.
    * @throws IteratorException if an iteration error occurs.
    */
-  public KeyDataEntry getCurrent(RID rid)
+  public LSHFKeyDataEntry getCurrent(RID rid)
       throws IteratorException {
     // Decrement slotNo temporarily to re-read the current entry.
     rid.slotNo--;
@@ -144,9 +144,9 @@ public class LSHFLeafPage extends BTSortedPage {
    * @return true if the deletion was successful; false if the entry was not found.
    * @throws LeafDeleteException if deletion fails.
    */
-  public boolean delEntry(KeyDataEntry dEntry)
+  public boolean delEntry(LSHFKeyDataEntry dEntry)
       throws LeafDeleteException {
-    KeyDataEntry entry;
+    LSHFKeyDataEntry entry;
     RID rid = new RID();
     try {
       for (entry = getFirst(rid); entry != null; entry = getNext(rid)) {

@@ -15,7 +15,7 @@ import btree.*;
  * We extend BTSortedPage to reuse the sorted storage mechanism.
  * Left link functionality is omitted because the LSH scheme does not require it.
  */
-public class LSHFIndexPage extends BTSortedPage {
+public class LSHFIndexPage extends LSHFSortedPage {
 
   /**
    * Constructs an LSHFIndexPage by pinning the page with the given PageId.
@@ -68,9 +68,9 @@ public class LSHFIndexPage extends BTSortedPage {
   public RID insertKey(KeyClass key, PageId pageNo) 
       throws IndexInsertRecException {
     RID rid;
-    KeyDataEntry entry;
+    LSHFKeyDataEntry entry;
     try {
-      entry = new KeyDataEntry(key, pageNo);
+      entry = new LSHFKeyDataEntry(key, pageNo);
       rid = super.insertRecord(entry);
       return rid;
     } catch (Exception e) {
@@ -87,13 +87,13 @@ public class LSHFIndexPage extends BTSortedPage {
    */
   public PageId getPageNoByKey(KeyClass key) 
       throws IndexSearchException {
-    KeyDataEntry entry;
+    LSHFKeyDataEntry entry;
     int i;
     try {
       for (i = getSlotCnt() - 1; i >= 0; i--) {
-        entry = BT.getEntryFromBytes(getpage(), getSlotOffset(i), 
+        entry = LSHF.getEntryFromBytes(getpage(), getSlotOffset(i), 
                                      getSlotLength(i), this.getKeyType(), NodeType.INDEX);
-        if (BT.keyCompare(key, entry.key) >= 0) {
+        if (LSHF.keyCompare(key, entry.key) >= 0) {
           return ((IndexData)entry.data).getData();
         }
       }
@@ -110,16 +110,16 @@ public class LSHFIndexPage extends BTSortedPage {
    * @return the first KeyDataEntry, or null if no entries exist.
    * @throws IteratorException if an iteration error occurs.
    */
-  public KeyDataEntry getFirst(RID rid) 
+  public LSHFKeyDataEntry getFirst(RID rid) 
       throws IteratorException {
-    KeyDataEntry entry; 
+    LSHFKeyDataEntry entry; 
     try { 
       rid.pageNo = getCurPage();
       rid.slotNo = 0; // start with first slot
       if (getSlotCnt() == 0) {
         return null;
       }
-      entry = BT.getEntryFromBytes(getpage(), getSlotOffset(0), 
+      entry = LSHF.getEntryFromBytes(getpage(), getSlotOffset(0), 
                                    getSlotLength(0), this.getKeyType(), NodeType.INDEX);
       return entry;
     } catch (Exception e) {
@@ -133,9 +133,9 @@ public class LSHFIndexPage extends BTSortedPage {
    * @return the next KeyDataEntry, or null if no more entries.
    * @throws IteratorException if an iteration error occurs.
    */
-  public KeyDataEntry getNext(RID rid)
+  public LSHFKeyDataEntry getNext(RID rid)
       throws IteratorException {
-    KeyDataEntry entry; 
+    LSHFKeyDataEntry entry; 
     int i;
     try {
       rid.slotNo++; // advance to next slot
@@ -143,7 +143,7 @@ public class LSHFIndexPage extends BTSortedPage {
       if (rid.slotNo >= getSlotCnt()) {
         return null;
       }
-      entry = BT.getEntryFromBytes(getpage(), getSlotOffset(i), 
+      entry = LSHF.getEntryFromBytes(getpage(), getSlotOffset(i), 
                                    getSlotLength(i), this.getKeyType(), NodeType.INDEX);
       return entry;
     } catch (Exception e) {
