@@ -73,13 +73,26 @@ public class batchinsert {
             // Process tuples.
             // Each tuple is stored in the file as n consecutive lines.
             String line;
+	    boolean eof = false;
             while ((line = br.readLine()) != null) {
                 // Read one tuple; first attribute already in 'line'
                 String[] tupleValues = new String[numAttrs];
                 tupleValues[0] = line;
                 for (int i = 1; i < numAttrs; i++) {
-                    tupleValues[i] = br.readLine();
+		    String nextLine = br.readLine();
+		    System.out.println("nextLine: " + nextLine);
+
+		    if (nextLine == null) {
+			eof = true;
+			System.err.println("End of file.");
+			break;
+		    }
+                    tupleValues[i] = nextLine;
                 }
+
+		if (eof == true) {
+		    break;
+		}
 
                 // Create a tuple with numAttrs fields.
                 Tuple tuple = create_tuple(numAttrs, attrTypes, tupleValues);
@@ -123,18 +136,22 @@ public class batchinsert {
         for (int i = 0; i < numAttrs; i++) {
             switch(attrTypes[i].attrType) {
                 case AttrType.attrInteger: // integer
+		    System.out.println("attrType: " + attrTypes[i].attrType);
                     int intVal = Integer.parseInt(tupleValues[i].trim());
                     tuple.setIntFld(i + 1, intVal);
                     break;
                 case AttrType.attrReal: // real (float)
+		    System.out.println("attrType: " + attrTypes[i].attrType);
                     float floatVal = Float.parseFloat(tupleValues[i].trim());
                     tuple.setFloFld(i + 1, floatVal);
                     break;
                 case AttrType.attrString: // string
+		    System.out.println("attrType: " + attrTypes[i].attrType);
                     String strVal = tupleValues[i].trim();
                     tuple.setStrFld(i + 1, strVal);
                     break;
                 case AttrType.attrVector100D: // 100D-vector
+		    System.out.println("attrType: " + attrTypes[i].attrType);
 
                     // The line should contain 100 integers separated by whitespace
                     String[] vecTokens = tupleValues[i].trim().split("\\s+");
@@ -144,7 +161,8 @@ public class batchinsert {
                     }
                     int[] dims = new int[100];
                     for (int j = 0; j < 100; j++) {
-                        dims[j] = Integer.parseInt(vecTokens[j].trim());
+			float temp = Float.parseFloat(vecTokens[i].trim());
+			dims[j] = (int) temp;
                     }
                     Vector100Dtype vector = new Vector100Dtype(dims);
 //                    System.out.println("fldNo: " + (i + 1));
