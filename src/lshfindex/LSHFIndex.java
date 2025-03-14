@@ -1,149 +1,183 @@
 package LSHFIndex;
 
 import global.Vector100Dtype;
-import heap.Heapfile;
 import global.RID;
-//import java.util.Random;
-import java.util.*;
-import iterator.Tuple;
-import global.AttrType;
+import btree.KeyClass;
+import java.util.Random;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Iterator;
+import iterator.Scan;
 
+/**
+ * LSHFIndexFile implements a fully complete self-tuning LSH-Forest index.
+ * 
+ * For each of the L layers, we maintain a prefix tree (built using the btree package
+ * as a template) that stores keys and pointers. Index pages in these trees hold
+ * <key, PageID> pairs while leaf pages hold <key, RID> pairs.
+ *
+ * This implementation modifies the hash function generation as described in:
+ * Alexandr Andoni and Piotr Indyk. 2008. Near-optimal hashing algorithms for approximate
+ * nearest neighbor in high dimensions.
+ *
+ * The hash function for Euclidean distance is defined as:
+ *    h(x) = floor((a · x + b) / W)
+ * where a is drawn from a Gaussian (N(0,1)) distribution and b is drawn uniformly
+ * from [0, W]. The final key is a concatenation of h such values.
+ */
 public class LSHFIndexFile {
-    private int h; // number of hash functions per layer
-    private int L; // number of layers
-    private Heapfile indexHeapfile;  // underlying storage for index pages
-    private Random random;
+    private int h;        // number of hash functions per layer (i.e., number of hash values to concatenate)
+    private int L;        // number of layers
+    private LSHFPrefixTree[] prefixTrees;  // one prefix tree per layer
 
-    // For each layer, we have h hash functions.
-    // Each hash function is represented as an array of random integers (the hyperplane)
-    // The structure is: hashFunctions[layer][functionIndex][dimension]
-    private int[][][] hashFunctions;
+    // For each layer and each hash function, we store a random projection vector "a"
+    // and a corresponding offset "b". They are used to compute:
+    //   h(x) = floor((a · x + b) / W)
+    // aValues[layer][i] is a 100-dimensional vector (array of doubles)
+    private double[][][] aValues;
+    // bOffsets[layer][i] is the offset for the i-th hash function in the given layer.
+    private double[][] bOffsets;
     
+    // Bucket width parameter from Andoni–Indyk. This controls the quantization.
+    private final double W = 5000.0;
+    
+    private Random rand;
+
     /**
      * Constructs a new LSHFIndexFile.
-     * @param fileName the underlying file name for the heap file storage.
-     * @param h the number of hash functions per layer.
+     * @param fileName the base file name used to create the prefix tree files.
+     * @param h the number of hash functions (values to concatenate) per layer.
      * @param L the number of layers.
-     * @throws Exception if file creation/opening fails.
+     * @throws Exception if initialization fails.
      */
     public LSHFIndexFile(String fileName, int h, int L) throws Exception {
         this.h = h;
         this.L = L;
-        // Create or open the underlying heap file that stores index pages
-        indexHeapfile = new Heapfile(fileName);
-
-        this.random = new Random();
+        this.rand = new Random();
         
-        // Initialize hash functions for each layer.
-        // For each layer, generate h random hyperplanes (each hyperplane is an array of 100 integers).
-        hashFunctions = new int[L][h][100];
-        Random rand = new Random();
+        // Initialize one prefix tree per layer.
+        prefixTrees = new LSHFPrefixTree[L];
+        for (int l = 0; l < L; l++) {
+            // Each prefix tree will use a file name unique to the layer.
+            prefixTrees[l] = new LSHFPrefixTree(fileName + "_layer" + l, h);
+        }
+        
+        // Allocate arrays for aValues and bOffsets.
+        aValues = new double[L][h][100];   // For each layer, for each hash function, a 100D vector.
+        bOffsets = new double[L][h];         // For each layer, for each hash function, an offset b.
+        
+        // Initialize aValues and bOffsets.
         for (int l = 0; l < L; l++) {
             for (int i = 0; i < h; i++) {
                 for (int j = 0; j < 100; j++) {
-                    // Here we generate random integers in a suitable range.
-                    // Adjust the range as needed for your application.
-                    //hashFunctions[l][i][j] = rand.nextInt(2001) - 1000;  // values between -1000 and 1000
-                    hashFunctions[l][i][j] = (int) random.nextGaussian().
+                    // Use a Gaussian distribution for aValues.
+                    aValues[l][i][j] = rand.nextGaussian();
                 }
+                // b is drawn uniformly from [0, W].
+                bOffsets[l][i] = rand.nextDouble() * W;
             }
         }
     }
 
     /**
-     * Computes the hash value for a given vector on a specific layer.
-     * The hash value is computed as an h-bit binary string.
-     * For each hash function, if the dot product with the vector is non-negative, the corresponding bit is 1; otherwise, 0.
+     * Computes the concatenated hash for a given vector on a specific layer using a specified prefix length.
+     * The computed key is a string concatenation of h_i(x) values (each an integer bucket)
+     * computed as: floor((a_i · x + b_i) / W)
      *
-     * @param vector the 100D vector (of type Vector100Dtype)
+     * @param vector the 100D vector.
      * @param layer the layer for which the hash is computed.
-     * @return a String representing the h-bit hash code.
+     * @param prefixLength the number of hash functions to use (allows self-tuning).
+     * @return a String representing the concatenated hash value.
      */
-    public String computeHash(Vector100Dtype vector, int layer) {
-        int[] dimensions = vector.getDimension();
+    public String computeHash(Vector100Dtype vector, int layer, int prefixLength) {
+        int[] dims = vector.getDimension();
         StringBuilder sb = new StringBuilder();
-        // For each hash function in the layer, compute the dot product with the vector.
-        for (int i = 0; i < h; i++) {
-            int[] hyperplane = hashFunctions[layer][i];
-            long dotProduct = 0;
+        int len = Math.min(prefixLength, h);
+        for (int i = 0; i < len; i++) {
+            double dot = 0.0;
             for (int j = 0; j < 100; j++) {
-                dotProduct += (long) dimensions[j] * hyperplane[j];
+                dot += aValues[layer][i][j] * dims[j];
             }
-            // Append "1" if non-negative, else "0"
-            sb.append(dotProduct >= 0 ? "1" : "0");
+            // Compute the hash value using floor((dot + b) / W)
+            int hashVal = (int)Math.floor((dot + bOffsets[layer][i]) / W);
+            sb.append(hashVal);
+            if (i < len - 1) {
+                sb.append("_"); // separator between hash values
+            }
         }
         return sb.toString();
     }
-    
+
     /**
-     * Inserts a new entry into the LSH-Forest index.
-     * For each layer, the vector is hashed and the resulting <hash, RID> pair is stored.
+     * Inserts a new 100D vector (with its corresponding RID) into the index.
+     * For each layer, the full h-value hash is computed from the vector, then a Vector100DKey is created
+     * and inserted into that layer's prefix tree.
      *
-     * @param key the key containing the 100D vector (Vector100DKey).
-     * @param rid the record id corresponding to the actual data in the data heap file.
-     * @throws Exception if the insertion fails.
+     * @param vector the 100D vector to insert.
+     * @param rid the record identifier for the corresponding data tuple.
+     * @throws Exception if insertion fails.
      */
-    public void insert(Vector100DKey key, RID rid) throws Exception {
-        // Extract the 100D vector from the key.
-        Vector100Dtype vector = key.getKey();
-        // For each layer, compute the hash code and insert the entry.
+    public void insert(Vector100Dtype vector, RID rid) throws Exception {
         for (int layer = 0; layer < L; layer++) {
-            String hashValue = computeHash(vector, layer);
-            // Insert the <layer, hashValue, RID> triple into the heap file.
-            // The actual storage format can be a tuple containing these fields.
-            insertIntoHeapfile(layer, hashValue, rid);
+            // Compute the full h-value hash for this layer.
+            String hashVal = computeHash(vector, layer, h);
+            // Create a Vector100DKey using the computed hash string.
+            Vector100DKey key = new Vector100DKey(hashVal);
+            // Insert into the corresponding prefix tree.
+            prefixTrees[layer].insert(key, rid);
         }
     }
-    
+
     /**
-     * A helper method to insert a tuple into the heap file.
-     * This method creates a tuple that contains the layer number, the hash code, and the RID.
-     * 
-     * The tuple format is as follows:
-     *  Field 1: layer (integer)
-     *  Field 2: hash value (string) -- length is set to the length of the hash code.
-     *  Field 3: RID page number (integer)
-     *  Field 4: RID slot number (integer)
+     * Returns a Scan over all entries in the index (from all layers).
+     * This method scans each prefix tree and combines the results.
      *
-     * @param layer the layer number.
-     * @param hashValue the computed hash code as a String.
-     * @param rid the record identifier pointing to the actual data record.
-     * @throws Exception if the insertion into the heap file fails.
+     * @return a Scan object iterating over all index entries.
+     * @throws Exception if the scan fails.
      */
-    private void insertIntoHeapfile(int layer, String hashValue, RID rid) throws Exception {
-        // Create a new tuple with 4 fields.
-        Tuple tuple = new Tuple();
-        
-        // Define the attribute types for the tuple.
-        // Field 1: layer (integer)
-        // Field 2: hashValue (string)
-        // Field 3: RID page number (integer)
-        // Field 4: RID slot number (integer)
-        AttrType[] attrTypes = new AttrType[4];
-        attrTypes[0] = new AttrType(AttrType.attrInteger);
-        attrTypes[1] = new AttrType(AttrType.attrString);
-        attrTypes[2] = new AttrType(AttrType.attrInteger);
-        attrTypes[3] = new AttrType(AttrType.attrInteger);
-        
-        // Define the string sizes array.
-        // For field 2 (hashValue), use its length.
-        short[] strSizes = new short[1];
-        strSizes[0] = (short) hashValue.length();
-        
-        // Initialize the tuple header with 4 fields.
-        tuple.setHdr((short)4, attrTypes, strSizes);
-        
-        // Set the fields.
-        tuple.setIntFld(1, layer);
-        tuple.setStringFld(2, hashValue);
-        tuple.setIntFld(3, rid.pageNo);
-        tuple.setIntFld(4, rid.slotNo);
-        
-        // Insert the tuple into the underlying heap file.
-        indexHeapfile.insertRecord(tuple.getTupleByteArray());
+    public Scan LSHFFileScan() throws Exception {
+        List<RID> allRIDs = new ArrayList<>();
+        for (int layer = 0; layer < L; layer++) {
+            List<RID> layerScan = prefixTrees[layer].scanAll();
+            allRIDs.addAll(layerScan);
+        }
+        return new LSHFIndexScan(allRIDs.iterator());
     }
 
-    public Scan LSHFFileScan() throws Exception {
-        return indexHeapfile.getHeapfile().openScan();
+    /**
+     * Performs a range scan using Euclidean distance.
+     * For the given query key, each layer's prefix tree is queried for all entries
+     * whose keys (with dynamically adjusted prefixes) yield vectors within the specified range.
+     *
+     * @param queryKey the query key (of type Vector100DKey).
+     * @param range the Euclidean distance threshold.
+     * @return a Scan over matching entries.
+     * @throws Exception if the scan fails.
+     */
+    public Scan LSHFFileRangeScan(Vector100DKey queryKey, double range) throws Exception {
+        List<RID> result = new ArrayList<>();
+        for (int layer = 0; layer < L; layer++) {
+            List<RID> layerResult = prefixTrees[layer].rangeSearch(queryKey, range);
+            result.addAll(layerResult);
+        }
+        return new LSHFIndexScan(result.iterator());
+    }
+
+    /**
+     * Performs a nearest neighbor (NN) scan.
+     * For the given query key, each layer's prefix tree returns the top 'count' candidate RIDs.
+     *
+     * @param queryKey the query key (of type Vector100DKey).
+     * @param count the number of nearest neighbors to return.
+     * @return a Scan over the NN candidate entries.
+     * @throws Exception if the scan fails.
+     */
+    public Scan LSHFFileNNScan(Vector100DKey queryKey, int count) throws Exception {
+        List<RID> result = new ArrayList<>();
+        for (int layer = 0; layer < L; layer++) {
+            List<RID> layerResult = prefixTrees[layer].nnSearch(queryKey, count);
+            result.addAll(layerResult);
+        }
+        return new LSHFIndexScan(result.iterator());
     }
 }
