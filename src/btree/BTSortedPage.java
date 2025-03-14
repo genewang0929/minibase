@@ -81,7 +81,11 @@ public class BTSortedPage  extends HFPage{
 	throw new ConstructPageException(e, "construct sorted page failed");
       }
     }  
-  
+
+  public int getKeyType() {
+    return keyType;
+  }
+	
   /**
    * Performs a sorted insertion of a record on an record page. The records are
    *  sorted in increasing key order.
