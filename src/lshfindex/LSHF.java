@@ -1,4 +1,4 @@
-package LSHFIndex;
+package lshfindex;
 
 import java.io.*;
 import global.*;

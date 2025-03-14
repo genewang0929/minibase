@@ -37,7 +37,7 @@ db:
 	make -C heap
 	make -C index
 	make -C iterator
-
+	make -C lshfindex
 doc:
 	$(JAVADOC) $(DOCFILES)
 

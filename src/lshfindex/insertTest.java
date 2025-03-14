@@ -1,10 +1,11 @@
+package lshfindex;
+
 import diskmgr.*;
 import global.*;
 import heap.*;
 import iterator.*;
 import java.io.*;
 import java.util.*;
-import LSHFIndex.*;
 import static global.GlobalConst.NUMBUF;
 
 public class insertTest {
@@ -161,9 +162,9 @@ public class insertTest {
                         System.err.println("Error: Expected 100 numbers for 100D-vector, found " + vecTokens.length);
                         System.exit(1);
                     }
-                    int[] dims = new int[100];
+                    short[] dims = new short[100];
                     for (int j = 0; j < 100; j++) {
-                        dims[j] = Integer.parseInt(vecTokens[j].trim());
+                        dims[j] = Short.parseShort(vecTokens[j].trim());
                     }
                     Vector100Dtype vector = new Vector100Dtype(dims);
                     tuple.set100DVectFld(i + 1, vector);

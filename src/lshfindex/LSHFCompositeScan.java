@@ -1,4 +1,4 @@
-package LSHFIndex;
+package lshfindex;
 
 import iterator.*;
 import heap.Tuple;

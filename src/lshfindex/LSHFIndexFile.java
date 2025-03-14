@@ -1,4 +1,4 @@
-package LSHFIndex;
+package lshfindex;
 
 import global.Vector100Dtype;
 import global.RID;
@@ -28,8 +28,8 @@ import java.io.*;
  * nearest neighbor in high dimensions.
  *
  * The hash function for Euclidean distance is defined as:
- *    h(x) = floor((a · x + b) / W)
- * where a is drawn from a Gaussian (N(0,1)) distribution and b is drawn uniformly
+ *    h(x) = floor((a * x + b) / W)
+ * where 'a' is drawn from a Gaussian (N(0,1)) distribution and b is drawn uniformly
  * from [0, W]. The final key is a concatenation of h such values.
  */
 public class LSHFIndexFile {
@@ -40,13 +40,13 @@ public class LSHFIndexFile {
 
     // For each layer and each hash function, we store a random projection vector "a"
     // and a corresponding offset "b". They are used to compute:
-    //   h(x) = floor((a · x + b) / W)
+    //   h(x) = floor((a * x + b) / W)
     // aValues[layer][i] is a 100-dimensional vector (array of doubles)
     private double[][][] aValues;
     // bOffsets[layer][i] is the offset for the i-th hash function in the given layer.
     private double[][] bOffsets;
     
-    // Bucket width parameter from Andoni–Indyk. This controls the quantization.
+    // Bucket width parameter from Andoni Indyk. This controls the quantization.
     private final double W = 5000.0;
     
     private Random rand;
@@ -91,7 +91,7 @@ public class LSHFIndexFile {
     /**
      * Computes the concatenated hash for a given vector on a specific layer using a specified prefix length.
      * The computed key is a string concatenation of h_i(x) values (each an integer bucket)
-     * computed as: floor((a_i · x + b_i) / W)
+     * computed as: floor((a_i * x + b_i) / W)
      *
      * @param vector the 100D vector.
      * @param layer the layer for which the hash is computed.
@@ -99,7 +99,7 @@ public class LSHFIndexFile {
      * @return a String representing the concatenated hash value.
      */
     public String computeHash(Vector100Dtype vector, int layer, int prefixLength) {
-        int[] dims = vector.getDimension();
+        short[] dims = vector.getDimension();
         StringBuilder sb = new StringBuilder();
         int len = Math.min(prefixLength, h);
         for (int i = 0; i < len; i++) {

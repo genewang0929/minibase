@@ -1,4 +1,4 @@
-package LSHFIndex;
+package lshfindex;
 
 import global.Vector100Dtype;
 import btree.KeyClass;

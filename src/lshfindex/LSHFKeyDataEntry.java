@@ -1,4 +1,4 @@
-package LSHFIndex;
+package lshfindex;
 
 import global.*;
 import btree.*; // For compatibility with DataClass, RID, PageId, etc.
