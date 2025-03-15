@@ -1,5 +1,8 @@
 package global;
 
+/**  Vector100Dtype.java
+ *  This defines a class for a 100-dimensional vector with short integer values.
+ */
 public class Vector100Dtype {
 
   private final static short MIN_VAL = -10000;

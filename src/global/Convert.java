@@ -152,6 +152,14 @@ public class Convert{
       return value;
     }
 
+  /**
+   * reads 200 bytes from the given byte array at the specified position
+   * convert it to a 100D vector
+   * @param       data            a byte array
+   * @param       position        the position in data[]
+   * @exception   java.io.IOException I/O errors
+   * @return      the 100D vector
+   */
   public static Vector100Dtype get100DVectorValue (int position, byte []data)
           throws java.io.IOException
   {
@@ -325,6 +333,13 @@ public class Convert{
       
     }
 
+    /**
+     * Update a 100D vector in the given byte array at the specified position.
+     * @param       value           the 100D vector to be copied into data[]
+     * @param       position        the position of the value in data[]
+     * @param       data            a byte array
+     * @exception   java.io.IOException I/O errors
+     */
     public static void set100DVectorValue(Vector100Dtype value, int position, byte[] data)
             throws java.io.IOException
     {

@@ -31,7 +31,7 @@ public class query {
       Vector100Dtype targetVector = readTargetVector(qs.getTargetFileName());
 
       String dbpath = "/tmp/"+System.getProperty("user.name")+"."+dbName;
-      SystemDefs.MINIBASE_RESTART_FLAG = true;
+      SystemDefs.MINIBASE_RESTART_FLAG = true;  // Use the existing DBMS
       SystemDefs sysdef = new SystemDefs(dbpath, 500, numBuf, "Clock" );
       Heapfile heapFile = new Heapfile("batch_file");
 
@@ -126,6 +126,14 @@ public class query {
     }
   }
 
+  /** Reads the schema file and returns an array of AttrType objects
+   * representing the attribute types for the specified database.
+   * The schema file is expected to be in the format:
+   *    <number_of_attributes>
+   *    <type1> <type2> ... <typeN>
+   * where each type is represented by an integer code:
+   * 1 - Integer, 2 - Real, 3 - String, 4 - Vector100D
+   */
   public static AttrType[] get_attrTypes(String dbName, AttrType[] attrTypes) {
     try (BufferedReader schemaReader = new BufferedReader(new FileReader( "batch_file.schema"))) {
       String line = schemaReader.readLine();
@@ -159,12 +167,13 @@ public class query {
     return attrTypes;
   }
 
-  // ----- Helper Methods -----
-
-  // Parses the query specification file.
-  // Expected formats:
-  //    Range(QA, T, D, out1, out2, ...)
-  //    NN(QA, T, K, out1, out2, ...)
+  /** Parses the query specification file and returns a QuerySpec object
+   * containing the parsed information. The query specification file is expected
+   * to be in the format:
+   *    Range(<queryField>, <targetFileName>, <threshold>, <outputField1>, <outputField2>, ...)
+   * or
+   *    NN(<queryField>, <targetFileName>, <K>, <outputField1>, <outputField2>, ...)
+   */
   private static QuerySpec parseQuerySpec(String qsName) throws IOException {
     BufferedReader br = new BufferedReader(new FileReader(qsName));
     String line = br.readLine().trim();
@@ -213,7 +222,9 @@ public class query {
     return qs;
   }
 
-  // Reads the target vector file and constructs a Vector100Dtype object.
+  /** Reads the target vector from the specified file and returns it as a Vector100Dtype object.
+   * The target vector file is expected to contain 100 integers, one for each dimension of the vector.
+   */
   private static Vector100Dtype readTargetVector(String fileName) throws IOException {
     BufferedReader br = new BufferedReader(new FileReader("queries/" + fileName));
     String line = br.readLine().trim();
@@ -231,15 +242,21 @@ public class query {
 
 }
 
-// ----- Supporting Classes and Enums -----
 
-// Enum for distinguishing query types.
+/** * Enum to represent the type of query being executed.
+ * RANGE: Range query based on a distance threshold.
+ * NN: Nearest Neighbor query to find K nearest neighbors.
+ */
 enum QueryType {
   RANGE,
   NN
 }
 
-// Represents a parsed query specification.
+/** Class to encapsulate the query specification.
+ * It contains fields for the query type, query field, target vector file name,
+ * threshold (distance or number of neighbors), and output fields.
+ */
+
 class QuerySpec {
   private QueryType queryType;
   private int queryField;           // Field number for the 100D-vector attribute.

@@ -136,6 +136,19 @@ public class batchinsert {
     }
   }
 
+  /**
+   * Create a tuple with the specified number of attributes, attribute types,
+   * and values. The values are read from the provided array of strings.
+   *
+   * @param numAttrs     Number of attributes in the tuple
+   * @param attrTypes    Array of AttrType objects representing the types of each attribute
+   * @param tupleValues  Array of string values for each attribute
+   * @return            A Tuple object populated with the specified values
+   * @throws IOException
+   * @throws InvalidTypeException
+   * @throws InvalidTupleSizeException
+   * @throws FieldNumberOutOfBoundException
+   */
   private static Tuple create_tuple(int numAttrs, AttrType[] attrTypes, String[] tupleValues) throws IOException, InvalidTypeException, InvalidTupleSizeException, FieldNumberOutOfBoundException {
     Tuple tuple = new Tuple();
     short[] Ssizes = new short[1];
@@ -182,6 +195,12 @@ public class batchinsert {
     return tuple;
   }
 
+  /**
+   * Cleans up the specified log and database paths by removing them.
+   *
+   * @param logpath Path to the log file
+   * @param dbpath  Path to the database file
+   */
   private static void cleanup(String logpath, String dbpath) {
     String remove_cmd = "/bin/rm -rf ";
     String remove_logcmd = remove_cmd + logpath;
@@ -194,6 +213,13 @@ public class batchinsert {
     }
   }
 
+  /**
+   * Saves the attribute types to a schema file for later reference.
+   *
+   * @param heapFilename The base filename for the heap file
+   * @param numAttrs     The number of attributes
+   * @param attrTypes    An array of AttrType objects representing the types of each attribute
+   */
   private static void save_attrTypes(String heapFilename, int numAttrs, AttrType[] attrTypes) {
     try (PrintWriter schemaWriter = new PrintWriter(new FileWriter(heapFilename + ".schema"))) {
       schemaWriter.println(numAttrs);

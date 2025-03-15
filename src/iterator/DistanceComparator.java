@@ -7,6 +7,10 @@ import global.Vector100Dtype;
 import heap.FieldNumberOutOfBoundException;
 import heap.Tuple;
 
+/**
+ * Comparator for comparing two pnode objects based on the distance of their
+ * associated tuples to a target vector.
+ */
 class DistanceComparator implements Comparator<pnode> {
   private int fld_no;
   private TupleOrder order;
@@ -18,6 +22,12 @@ class DistanceComparator implements Comparator<pnode> {
     this.target = target;
   }
 
+  /**
+   * Calculates the distance from a tuple to the target vector.
+   * @param tuple the tuple to calculate the distance for.
+   * @return the calculated distance as a short value.
+   * @throws SortException if there is an error in calculating the distance.
+   */
   public short calculateDistance(Tuple tuple) throws SortException {
     try {
       Vector100Dtype vector100Dtype = tuple.get100DVectFld(fld_no);
@@ -28,7 +38,12 @@ class DistanceComparator implements Comparator<pnode> {
     }
 }
 
-
+  /**
+   * Compares two pnode objects based on the distance of their tuples to a target vector.
+   * @param node1 the first object to be compared.
+   * @param node2 the second object to be compared.
+   * @return
+   */
   @Override
   public int compare(pnode node1, pnode node2) {
     try {

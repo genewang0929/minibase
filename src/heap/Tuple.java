@@ -266,7 +266,14 @@ public class Tuple implements GlobalConst {
       throw new FieldNumberOutOfBoundException(null, "TUPLE:TUPLE_FLDNO_OUT_OF_BOUND");
 
   }
-
+  /**
+   * Convert this field into a 100D vector
+   *
+   * @param fldNo the field number
+   * @return the character if success
+   * @throws IOException                    I/O errors
+   * @throws FieldNumberOutOfBoundException Tuple field number out of bound
+   */
   public Vector100Dtype get100DVectFld(int fldNo)
           throws IOException, FieldNumberOutOfBoundException {
     Vector100Dtype val;
@@ -333,6 +340,14 @@ public class Tuple implements GlobalConst {
       throw new FieldNumberOutOfBoundException(null, "TUPLE:TUPLE_FLDNO_OUT_OF_BOUND");
   }
 
+  /**
+   * Set this field to vector value
+   *
+   * @param fldNo the field number
+   * @param val   the vector value
+   * @throws IOException                    I/O errors
+   * @throws FieldNumberOutOfBoundException Tuple field number out of bound
+   */
   public Tuple set100DVectFld(int fldNo, Vector100Dtype val)
           throws IOException, FieldNumberOutOfBoundException {
     if ((fldNo > 0) && (fldNo <= fldCnt)) {

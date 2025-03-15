@@ -51,6 +51,13 @@ public class pnodeSplayPQ extends pnodePQ
     sort_order = order;
   }
 
+	/**
+	 * class constructor.
+	 * @param fldNo   the field number for sorting
+	 * @param fldType the type of the field for sorting
+	 * @param order   the order of sorting (Ascending or Descending)
+	 * @param comparator the DistanceComparator for comparing pnode objects
+	 */
 	public pnodeSplayPQ(int fldNo, AttrType fldType, TupleOrder order, DistanceComparator comparator)
 	{
 		root = null;

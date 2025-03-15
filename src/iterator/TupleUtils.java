@@ -89,7 +89,7 @@ public class TupleUtils {
           throw new TupleUtilsException(e, "FieldNumberOutOfBoundException is caught by TupleUtils.java");
         }
 
-        int encoded_dist = getDistance(t1_v, t2_v) + 100;
+        int encoded_dist = getDistance(t1_v, t2_v) + 100; // distance could be 0 or 1, so we add 100 to avoid misinterpretation of final comp result
         return encoded_dist;
 
       default:
@@ -99,6 +99,13 @@ public class TupleUtils {
     }
   }
 
+  /**
+   * This function calculates the distance between two 100D vectors
+   *
+   * @param t1_v the first vector
+   * @param t2_v the second vector
+   * @return the distance between the two vectors as a short value
+   */
   public static short getDistance(Vector100Dtype t1_v, Vector100Dtype t2_v) {
     short distance_t1_t2 = 0;
     for (int i = 0; i < 100; i++) {
