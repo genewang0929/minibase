@@ -23,6 +23,8 @@ import heap.*;
  */
 public class LSHFPrefixTreeHeaderPage extends HFPage {
 
+  private static boolean DEBUG = true;
+
   /**
    * Sets the page id for this header page.
    * @param pageno the page identifier.
@@ -61,6 +63,9 @@ public class LSHFPrefixTreeHeaderPage extends HFPage {
    */
   public void set_rootId(PageId rootID) throws IOException {
     setNextPage(rootID);
+    if (DEBUG) {
+      System.out.println("[LSHFPrefixTreeHeaderPage] Created root page: " + rootID.pid);
+    }
   }
 
   /**
@@ -75,16 +80,25 @@ public class LSHFPrefixTreeHeaderPage extends HFPage {
    * Sets the key type.
    * @param key_type the key type (for example, a constant representing Vector100DKey).
    */
-  public void set_keyType(short key_type) throws IOException {
-    setSlot(3, (int) key_type, 0);
+  public void set_keyType(short key_type) {
+    try {
+      setSlot(3, (int) key_type, 0);
+    } catch (Exception e) {
+      System.out.println("set key type failed");
+    }
   }
 
   /**
    * Retrieves the key type.
    * @return the key type.
    */
-  public short get_keyType() throws IOException {
-    return (short) getSlotLength(3);
+  public short get_keyType() {
+    try {
+      return (short) getSlotLength(3);
+    } catch (Exception e) {
+      System.out.println("get key type failed");
+    }
+    return 0;
   }
 
   /**

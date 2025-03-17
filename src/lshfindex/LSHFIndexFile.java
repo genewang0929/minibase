@@ -1,31 +1,20 @@
 package lshfindex;
 
-import global.Vector100Dtype;
-import global.RID;
-import btree.KeyClass;
-import java.util.Random;
-import java.util.List;
-import java.util.ArrayList;
-// import java.util.Iterator;
-import iterator.*;
-import heap.Tuple;
-import global.AttrType;
-import java.io.IOException;
-import java.util.List;
-import diskmgr.*;
 import bufmgr.*;
-import java.io.*;
+import global.AttrType;
+import global.RID;
+import global.Vector100Dtype;
+import heap.Tuple;
+import iterator.*;
+import java.io.IOException;
+import java.util.Random;
 
 /**
  * LSHFIndexFile implements a fully complete self-tuning LSH-Forest index.
- * 
+ *
  * For each of the L layers, we maintain a prefix tree (built using the btree package
  * as a template) that stores keys and pointers. Index pages in these trees hold
  * <key, PageID> pairs while leaf pages hold <key, RID> pairs.
- *
- * This implementation modifies the hash function generation as described in:
- * Alexandr Andoni and Piotr Indyk. 2008. Near-optimal hashing algorithms for approximate
- * nearest neighbor in high dimensions.
  *
  * The hash function for Euclidean distance is defined as:
  *    h(x) = floor((a * x + b) / W)
@@ -33,6 +22,9 @@ import java.io.*;
  * from [0, W]. The final key is a concatenation of h such values.
  */
 public class LSHFIndexFile {
+
+    private static boolean DEBUG = true;
+
     private String fileName;
     private int h;        // number of hash functions per layer (i.e., number of hash values to concatenate)
     private int L;        // number of layers
@@ -45,11 +37,13 @@ public class LSHFIndexFile {
     private double[][][] aValues;
     // bOffsets[layer][i] is the offset for the i-th hash function in the given layer.
     private double[][] bOffsets;
-    
+
     // Bucket width parameter from Andoni Indyk. This controls the quantization.
     private final double W = 5000.0;
-    
+
     private Random rand;
+
+    protected final static int BUCKET_NUM = 4;
 
     /**
      * Constructs a new LSHFIndexFile.
@@ -62,28 +56,28 @@ public class LSHFIndexFile {
         this.fileName = fileName;
         this.h = h;
         this.L = L;
-        this.rand = new Random();
-        
+        this.rand = new Random(1);
+
         // Initialize one prefix tree per layer.
         prefixTrees = new LSHFPrefixTree[L];
         for (int l = 0; l < L; l++) {
             // Each prefix tree will use a file name unique to the layer.
             prefixTrees[l] = new LSHFPrefixTree(fileName + "_layer" + l, h);
         }
-        
+
         // Allocate arrays for aValues and bOffsets.
         aValues = new double[L][h][100];   // For each layer, for each hash function, a 100D vector.
         bOffsets = new double[L][h];         // For each layer, for each hash function, an offset b.
-        
+
         // Initialize aValues and bOffsets.
         for (int l = 0; l < L; l++) {
             for (int i = 0; i < h; i++) {
                 for (int j = 0; j < 100; j++) {
                     // Use a Gaussian distribution for aValues.
-                    aValues[l][i][j] = rand.nextGaussian();
+                    aValues[l][i][j] = Math.max(-1, Math.min(1, rand.nextGaussian() / 3));
                 }
-                // b is drawn uniformly from [0, W].
-                bOffsets[l][i] = rand.nextDouble() * W;
+                // b is drawn uniformly from [1, W).
+                bOffsets[l][i] = rand.nextDouble() * (W - 1) + 1;
             }
         }
     }
@@ -102,18 +96,28 @@ public class LSHFIndexFile {
         short[] dims = vector.getDimension();
         StringBuilder sb = new StringBuilder();
         int len = Math.min(prefixLength, h);
+
         for (int i = 0; i < len; i++) {
             double dot = 0.0;
             for (int j = 0; j < 100; j++) {
                 dot += aValues[layer][i][j] * dims[j];
             }
             // Compute the hash value using floor((dot + b) / W)
-            int hashVal = (int)Math.floor((dot + bOffsets[layer][i]) / W);
+            int hashVal = (int)(Math.floor(Math.abs(dot + bOffsets[layer][i]) % BUCKET_NUM));
             sb.append(hashVal);
             if (i < len - 1) {
                 sb.append("_"); // separator between hash values
             }
         }
+
+        // double dot = 0.0;
+        // for (int j = 0; j < 100; j++) {
+        //     dot += aValues[layer][hashno][j] * dims[j];
+        // }
+        // // Compute the hash value using floor((dot + b) / W)
+        // int hashVal = (int)Math.floor((dot + bOffsets[layer][hashno]) / W);
+        // sb.append(hashVal);
+
         return sb.toString();
     }
 
@@ -128,56 +132,29 @@ public class LSHFIndexFile {
      */
     public void insert(Vector100Dtype vector, RID rid) throws Exception {
         for (int layer = 0; layer < L; layer++) {
+            boolean inserted = false;
             // Compute the full h-value hash for this layer.
             String hashVal = computeHash(vector, layer, h);
             // Create a Vector100DKey using the computed hash string.
             Vector100DKey key = new Vector100DKey(hashVal);
             // Insert into the corresponding prefix tree.
+
             prefixTrees[layer].insert(key, rid);
         }
     }
 
-    /**
-     * Scans all prefix tree files in the LSH forest and returns a composite FileScan
-     * that iterates over all tuples (each tuple is a <key, RID> pair).
-     * This scan covers the entire LSH forest (all layers).
-     *
-     * @return an Iterator-based scan over all index entries.
-     * @throws Exception if the scan fails.
-     */
-    public Iterator LSHFFileScan() throws Exception {
-        List<Tuple> allTuples = new ArrayList<>();
-        // Define tuple format: we assume each tuple has 3 fields:
-        // Field 1: key (string), Field 2: RID page number (integer), Field 3: RID slot number (integer).
-        AttrType[] in1 = new AttrType[3];
-        in1[0] = new AttrType(AttrType.attrString);
-        in1[1] = new AttrType(AttrType.attrInteger);
-        in1[2] = new AttrType(AttrType.attrInteger);
-        short[] s_sizes = new short[1];
-        s_sizes[0] = 50; // maximum string length (adjust as needed)
-        short len_in1 = 3;
-        int n_out_flds = 3;
-        FldSpec[] proj_list = new FldSpec[3];
-        // Create an identity projection: field 1 maps to field 1, etc.
-        proj_list[0] = new FldSpec(new RelSpec(RelSpec.outer), 1);
-        proj_list[1] = new FldSpec(new RelSpec(RelSpec.outer), 2);
-        proj_list[2] = new FldSpec(new RelSpec(RelSpec.outer), 3);
-        CondExpr[] outFilter = null;  // no filtering
-        
-        // For each layer, open a FileScan and collect all tuples.
-        for (int l = 0; l < L; l++) {
-            String layerFileName = fileName + "_layer" + l;
-            FileScan fs = new FileScan(layerFileName, in1, s_sizes, len_in1, n_out_flds, proj_list, outFilter);
-            Tuple t;
-            while ((t = fs.get_next()) != null) {
-                allTuples.add(t);
-            }
-            fs.close();
-        }
-        // Return a composite scan over all tuples.
-        return new LSHFCompositeScan(allTuples.iterator());
-    }
-    
+
+    // public void printForest() {
+    //     for (int i = 0; i < L; i++) {
+    //         try {
+    //             LSHF.printPrefixTree(prefixTrees[i].getHeaderPage());
+    //         } catch (Exception e) {
+    //             System.out.println("[LSHFIndexFile] printForest(): IOerror");
+    //         }
+    //     }
+    // }
+
+
     /**
      * Checks if data has actually been stored on disk for the entire LSH forest.
      * It does so by opening a FileScan on each layer's heap file and verifying that at least
@@ -200,7 +177,7 @@ public class LSHFIndexFile {
         proj_list[1] = new FldSpec(new RelSpec(RelSpec.outer), 2);
         proj_list[2] = new FldSpec(new RelSpec(RelSpec.outer), 3);
         CondExpr[] outFilter = null;
-        
+
         for (int l = 0; l < L; l++) {
             String layerFileName = fileName + "_layer" + l;
             FileScan fs = new FileScan(layerFileName, in1, s_sizes, len_in1, n_out_flds, proj_list, outFilter);
@@ -213,58 +190,6 @@ public class LSHFIndexFile {
         return false;
     }
 
-    /**
-     * Returns a Scan over all entries in the index (from all layers).
-     * This method scans each prefix tree and combines the results.
-     *
-     * @return a Scan object iterating over all index entries.
-     * @throws Exception if the scan fails.
-     */
-    // public Scan LSHFFileScan() throws Exception {
-    //     List<RID> allRIDs = new ArrayList<>();
-    //     for (int layer = 0; layer < L; layer++) {
-    //         List<RID> layerScan = prefixTrees[layer].scanAll();
-    //         allRIDs.addAll(layerScan);
-    //     }
-    //     return new LSHFIndexScan(allRIDs.iterator());
-    // }
-
-    /**
-     * Performs a range scan using Euclidean distance.
-     * For the given query key, each layer's prefix tree is queried for all entries
-     * whose keys (with dynamically adjusted prefixes) yield vectors within the specified range.
-     *
-     * @param queryKey the query key (of type Vector100DKey).
-     * @param range the Euclidean distance threshold.
-     * @return a Scan over matching entries.
-     * @throws Exception if the scan fails.
-     */
-    // public Scan LSHFFileRangeScan(Vector100DKey queryKey, double range) throws Exception {
-    //     List<RID> result = new ArrayList<>();
-    //     for (int layer = 0; layer < L; layer++) {
-    //         List<RID> layerResult = prefixTrees[layer].rangeSearch(queryKey, range);
-    //         result.addAll(layerResult);
-    //     }
-    //     return new LSHFIndexScan(result.iterator());
-    // }
-
-    /**
-     * Performs a nearest neighbor (NN) scan.
-     * For the given query key, each layer's prefix tree returns the top 'count' candidate RIDs.
-     *
-     * @param queryKey the query key (of type Vector100DKey).
-     * @param count the number of nearest neighbors to return.
-     * @return a Scan over the NN candidate entries.
-     * @throws Exception if the scan fails.
-     */
-    // public Scan LSHFFileNNScan(Vector100DKey queryKey, int count) throws Exception {
-    //     List<RID> result = new ArrayList<>();
-    //     for (int layer = 0; layer < L; layer++) {
-    //         List<RID> layerResult = prefixTrees[layer].nnSearch(queryKey, count);
-    //         result.addAll(layerResult);
-    //     }
-    //     return new LSHFIndexScan(result.iterator());
-    // }
 
     /** Close the LSHF index file.  Unpin header page.
      *@exception PageUnpinnedException  error from the lower layer
@@ -273,11 +198,10 @@ public class LSHFIndexFile {
      *@exception ReplacerException  error from the lower layer
      */
     public void close()
-	throws PageUnpinnedException, InvalidFrameNumberException, HashEntryNotFoundException, ReplacerException, IOException
-    {
-      for (int l = 0; l < L; l++) {
-        prefixTrees[l].closePrefixTree();
-	System.out.println("Prefix Tree " + l + " closed.");
-      }
+    throws PageUnpinnedException, InvalidFrameNumberException, HashEntryNotFoundException, ReplacerException, IOException {
+        for (int l = 0; l < L; l++) {
+            prefixTrees[l].closePrefixTree();
+            System.out.println("Prefix Tree " + l + " closed.");
+        }
     }
 }

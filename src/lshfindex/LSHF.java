@@ -9,6 +9,8 @@ import btree.*;
 
 public class LSHF implements GlobalConst {
 
+  private static boolean DEBUG = false;
+
   public final static int keyCompare(KeyClass key1, KeyClass key2)
     throws KeyNotMatchException {
       if (key1 instanceof Vector100DKey && key2 instanceof Vector100DKey) {
@@ -67,8 +69,13 @@ public class LSHF implements GlobalConst {
 
         if (keyType == AttrType.attrString) {
           key = new Vector100DKey(Convert.getStrValue(offset, from, length - n));
+
         } else {
           throw new KeyNotMatchException(null, "Key types do not match");
+        }
+
+        if (DEBUG) {
+          System.out.println("[LSHF] getEntryFromBytes(): key = " + ((Vector100DKey)key).getKey());
         }
 
         return new LSHFKeyDataEntry(key, data);
@@ -110,4 +117,61 @@ public class LSHF implements GlobalConst {
         throw new ConvertException(e, "Conversion failed");
       }
   }
+
+  // public static void printPrefixTree(LSHFPrefixTreeHeaderPage header) throws IOException, 
+  //    ConstructPageException, 
+  //    IteratorException,
+  //    HashEntryNotFoundException,
+  //    InvalidFrameNumberException,
+  //    PageUnpinnedException,
+  //    ReplacerException
+  // {
+  //     if(header.get_rootId().pid == INVALID_PAGE) {
+  //       System.out.println("The Tree is Empty!!!");
+  //       return;
+  //     }
+      
+  //     System.out.println("");
+  //     System.out.println("");
+  //     System.out.println("");
+  //     System.out.println("---------------The Prefix Tree Structure---------------");
+      
+      
+  //     System.out.println(1+ "     "+header.get_rootId());
+      
+  //     _printTree(header.get_rootId(), "     ", 1, header.get_keyType());
+      
+  //     System.out.println("--------------- End ---------------");
+  //     System.out.println("");
+  //     System.out.println("");
+  // }
+
+  // private static void _printTree(PageId currentPageId, String prefix, int i, 
+  //        int keyType) 
+  //   throws IOException, 
+  //    ConstructPageException, 
+  //    IteratorException,
+  //    HashEntryNotFoundException,
+  //    InvalidFrameNumberException,
+  //    PageUnpinnedException,
+  //    ReplacerException
+  //   {
+  //     LSHFSortedPage sortedPage = new LSHFSortedPage(currentPageId, keyType);
+  //     prefix=prefix+"       ";
+  //     i++;
+  //     if( sortedPage.getType()==NodeType.INDEX) {  
+  //       LSHFIndexPage indexPage=new LSHFIndexPage((Page)sortedPage, keyType);
+        
+  //       // System.out.println(i+prefix+ indexPage.getPrevPage());
+  //       _printTree( indexPage.getPrevPage(), prefix, i, keyType);
+        
+  //       RID rid=new RID();
+  //       for( LSHFKeyDataEntry entry=indexPage.getFirst(rid); entry!=null; 
+  //            entry=indexPage.getNext(rid)) {
+  //         System.out.println(i+prefix+(IndexData)entry.data);
+  //         _printTree( ((IndexData)entry.data).getData(), prefix, i, keyType);
+  //       }
+  //     }
+  //     SystemDefs.JavabaseBM.unpinPage(currentPageId , true/*dirty*/);
+  //   }
 }

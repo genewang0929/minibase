@@ -13,6 +13,8 @@ import btree.*;
  */
 public class LSHFSortedPage extends HFPage {
 
+    private static boolean DEBUG = true;
+
     int keyType; // Key type, similar to BTSortedPage
 
     /**
@@ -23,6 +25,9 @@ public class LSHFSortedPage extends HFPage {
      */
     public LSHFSortedPage(PageId pageno, int keyType) throws ConstructPageException {
         super();
+        if (DEBUG) {
+            System.out.println("[LSHFSortedPage] LSHFSortedPage(PageId pageno, int keyType), page " + pageno.pid);
+        }
         try {
             SystemDefs.JavabaseBM.pinPage(pageno, this, false); // Read-disk flag
             this.keyType = keyType;
@@ -38,6 +43,9 @@ public class LSHFSortedPage extends HFPage {
      */
     public LSHFSortedPage(Page page, int keyType) {
         super(page);
+        if (DEBUG) {
+            System.out.println("[LSHFSortedPage] LSHFSortedPage(Page page, int keyType)");
+        }
         this.keyType = keyType;
     }
 
@@ -48,6 +56,9 @@ public class LSHFSortedPage extends HFPage {
      */
     public LSHFSortedPage(int keyType) throws ConstructPageException {
         super();
+        if (DEBUG) {
+            System.out.println("[LSHFSortedPage] LSHFSortedPage(int keyType)");
+        }
         try {
             Page apage = new Page();
             PageId pageId = SystemDefs.JavabaseBM.newPage(apage, 1);
@@ -89,10 +100,10 @@ public class LSHFSortedPage extends HFPage {
             for (i = getSlotCnt() - 1; i > 0; i--) {
                 KeyClass key_i, key_iplus1;
                 key_i = LSHF.getEntryFromBytes(getpage(), getSlotOffset(i),
-                        getSlotLength(i), keyType, nType).key;
+                                               getSlotLength(i), keyType, nType).key;
                 key_iplus1 = LSHF.getEntryFromBytes(getpage(), getSlotOffset(i - 1),
-                        getSlotLength(i - 1), keyType, nType).key;
-                
+                                                    getSlotLength(i - 1), keyType, nType).key;
+
                 if (LSHF.keyCompare(key_i, key_iplus1) < 0) {
                     // Swap slots
                     int ln = getSlotLength(i);
@@ -135,7 +146,12 @@ public class LSHFSortedPage extends HFPage {
      * @return the number of records
      * @throws IOException I/O error
      */
-    public int numberOfRecords() throws IOException {
-        return getSlotCnt();
+    public int numberOfRecords() {
+        try {
+            return getSlotCnt();
+        } catch (Exception e) {
+            System.out.println("get number of records failed");
+        }
+        return 0;
     }
 }

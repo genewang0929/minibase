@@ -73,7 +73,7 @@ public class batchinsert {
 //            }
 
       // Initialize DB
-      SystemDefs sysdef = new SystemDefs(dbpath, 500, 500, "Clock");
+      SystemDefs sysdef = new SystemDefs(dbpath, 1000, NUMBUF, "Clock");
 
 
       // Create the heap file for storing tuples (database file)

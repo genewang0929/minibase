@@ -17,6 +17,8 @@ import global.*;
  */
 class FrameDesc implements GlobalConst {
 
+  private static boolean DEBUG = false;
+
   /**
    * The page within file, or INVALID_PAGE if the frame is empty.
    */
@@ -63,6 +65,9 @@ class FrameDesc implements GlobalConst {
    * @return the incremented pin count.
    */
   public int pin() {
+    // if (DEBUG) {
+    //   System.out.println("[BufMgr] (FrameDesc) pin: page " + pageNo.pid);
+    // }
     return (++pin_cnt);
   }
 
@@ -76,6 +81,10 @@ class FrameDesc implements GlobalConst {
   public int unpin() {
 
     pin_cnt = (pin_cnt <= 0) ? 0 : pin_cnt - 1;
+
+    // if (DEBUG) {
+    //   System.out.println("[BufMgr] (FrameDesc) try unpin: page " + pageNo.pid + ", pin_cnt = " + pin_cnt);
+    // }
 
     return (pin_cnt);
   }
@@ -116,6 +125,7 @@ class BufHTEntry {
  */
 class BufHashTbl implements GlobalConst {
 
+  private static boolean DEBUG = false;
 
   /**
    * Hash Table size, small number for debugging.
@@ -351,6 +361,8 @@ class Clock extends Replacer {
  */
 public class BufMgr implements GlobalConst {
 
+  private static boolean DEBUG = true;
+
   /**
    * The hash table, only allocated once.
    */
@@ -404,8 +416,12 @@ public class BufMgr implements GlobalConst {
     for (i = 0; i < numBuffers; i++)   // write all valid dirty pages to disk
       if ((all_pages != 0) || (frmeTable[i].pageNo.pid == pageid.pid)) {
 
-        if (frmeTable[i].pin_count() != 0)
+        if (frmeTable[i].pin_count() != 0) {
+          // if (DEBUG) {
+          //   System.out.println("[BufMgr] privFlushPages, all_pages = " + all_pages + ", page " + frmeTable[i].pageNo.pid + " pin_cnt = " + frmeTable[i].pin_cnt);
+          // }
           unpinned++;
+        }
 
         if (frmeTable[i].dirty != false) {
 
@@ -437,8 +453,12 @@ public class BufMgr implements GlobalConst {
       }
 
     if (all_pages != 0) {
-      if (unpinned != 0)
+      if (unpinned != 0) {
+        // if (DEBUG) {
+        //   System.out.println("[BufMgr] privFlushPages, all_pages = " + all_pages + ", unpinned =" + unpinned);
+        // }
         throw new PagePinnedException(null, "BUFMGR: PAGE_PINNED.");
+      }
     }
   }
 
@@ -522,6 +542,10 @@ public class BufMgr implements GlobalConst {
           PagePinnedException,
           BufMgrException,
           IOException {
+    if (DEBUG) {
+      System.out.println("[BufMgr] pin: page " + pin_pgid.pid);
+    }
+
     int frameNo;
     boolean bst, bst2;
     PageId oldpageNo = new PageId(-1);
@@ -623,6 +647,10 @@ public class BufMgr implements GlobalConst {
           HashEntryNotFoundException,
           InvalidFrameNumberException {
 
+    // if (DEBUG) {
+    //   System.out.println("[BufMgr] try unpin: page " + PageId_in_a_DB.pid);
+    // }
+
     int frameNo;
 
     frameNo = hashTable.lookup(PageId_in_a_DB);
@@ -640,9 +668,13 @@ public class BufMgr implements GlobalConst {
       throw new ReplacerException(null, "BUFMGR: REPLACER_ERROR.");
     }
 
-    if (dirty == true)
+    if (dirty == true) {
       frmeTable[frameNo].dirty = dirty;
+    }
 
+    if (DEBUG) {
+      System.out.println("[BufMgr] unpinned: page " + PageId_in_a_DB.pid);
+    }
   }
 
 

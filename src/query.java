@@ -32,7 +32,7 @@ public class query {
 
       String dbpath = "/tmp/"+System.getProperty("user.name")+"."+dbName;
       SystemDefs.MINIBASE_RESTART_FLAG = true;  // Use the existing DBMS
-      SystemDefs sysdef = new SystemDefs(dbpath, 500, numBuf, "Clock" );
+      SystemDefs sysdef = new SystemDefs(dbpath, 1000, numBuf, "Clock" );
       Heapfile heapFile = new Heapfile("batch_file");
 
       AttrType[] attrTypes = null;
@@ -104,9 +104,10 @@ public class query {
 
           FileScan fileScan = new FileScan("batch_file", attrTypes, Ssizes, (short)attrTypes.length, qs.getOutputFields().length, projlist, null);
           Sort sortIterator = new Sort(attrTypes, (short) attrTypes.length, Ssizes,
-                          fileScan, qs.getQueryField(), order[0], 32, 500, targetVector, qs.getThreshold());
+                  fileScan, qs.getQueryField(), order[1], 32, 500, targetVector, qs.getThreshold());
 
           Tuple resultTuple;
+          System.out.println("Result Tuple:");
           while ((resultTuple = sortIterator.get_next()) != null) {
             resultTuple.print(attrTypes);
           }

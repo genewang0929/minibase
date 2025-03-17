@@ -13,6 +13,8 @@ import btree.*;
  */
 public class LSHFLeafPage extends LSHFSortedPage {
 
+  private static boolean DEBUG = true;
+
   /**
    * Constructs an LSHFLeafPage by pinning the page with the given PageId.
    * Sets the node type to LEAF.
@@ -24,6 +26,9 @@ public class LSHFLeafPage extends LSHFSortedPage {
   public LSHFLeafPage(PageId pageno, int keyType)
       throws IOException, ConstructPageException {
     super(pageno, keyType);
+    if (DEBUG) {
+      System.out.println("[LSHFLeafPage] Constructs a leaf page by pinning page " + pageno.pid);
+    }
     setType(NodeType.LEAF);
   }
 
@@ -38,6 +43,9 @@ public class LSHFLeafPage extends LSHFSortedPage {
   public LSHFLeafPage(Page page, int keyType)
       throws IOException, ConstructPageException {
     super(page, keyType);
+    if (DEBUG) {
+      System.out.println("[LSHFLeafPage] Constructs a leaf page by associating it with an existing page");
+    }
     setType(NodeType.LEAF);
   }
 
@@ -51,6 +59,9 @@ public class LSHFLeafPage extends LSHFSortedPage {
   public LSHFLeafPage(int keyType)
       throws IOException, ConstructPageException {
     super(keyType);
+    if (DEBUG) {
+      System.out.println("[LSHFLeafPage] Constructs a new leaf page");
+    }
     setType(NodeType.LEAF);
   }
 
@@ -162,8 +173,13 @@ public class LSHFLeafPage extends LSHFSortedPage {
     }
   }
 
-  // Wrapper for protected method
+  // Wrapper
   // public int getRecordCount() {
-  //   return super.numberOfRecords();
+  //   try {
+  //     return super.numberOfRecords();
+  //   } catch (Exception e) {
+  //     System.out.println("get record count failed");
+  //     return 0;
+  //   }
   // }
 }

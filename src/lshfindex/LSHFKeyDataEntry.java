@@ -53,6 +53,16 @@ public class LSHFKeyDataEntry {
         else
             throw new IllegalArgumentException("Data must be either IndexData or LeafData");
     }
+
+    public LSHFKeyDataEntry(String hashvalue, PageId pageNo) {
+        this.key = new Vector100DKey(hashvalue);
+        this.data = new IndexData(pageNo);
+    }
+
+    public LSHFKeyDataEntry(String hashvalue, RID rid) {
+        this.key = new Vector100DKey(hashvalue);
+        this.data = new LeafData(rid);
+    }
     
     /**
      * Shallow equality check between this entry and another.
@@ -64,7 +74,7 @@ public class LSHFKeyDataEntry {
         boolean dataEqual;
         if (data instanceof IndexData) {
             dataEqual = (((IndexData) data).getData().pid == ((IndexData) entry.data).getData().pid);
-        } else { // assume LeafData\n"
+        } else { // assume LeafData
             dataEqual = ((RID)((LeafData) data).getData()).equals(((RID)((LeafData) entry.data).getData()));
         }
         return keysEqual && dataEqual;

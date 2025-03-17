@@ -20,7 +20,7 @@ DOCFILES=bufmgr diskmgr global chainexception heap btree iterator index
 ASSIGN=/Users/genewang/Documents/ASU_Course/Database_Management_Impl/minjava/javaminibase/src
 LIBDIR=$(ASSIGN)/lib
 KEY=$(ASSIGN)/key
-SRC=$(ASSIGN)/src
+SRC=$(ASSIGN)/src2
 
 IMAGELINK=$(PACKAGEINDEX)/images
 PACKAGEINDEX=$(ASSIGN)/javadoc
@@ -38,6 +38,7 @@ db:
 	make -C index
 	make -C iterator
 	make -C lshfindex
+	javac insertTest.java batchinsert.java query.java
 doc:
 	$(JAVADOC) $(DOCFILES)
 
@@ -46,3 +47,4 @@ test:
 
 clean:
 	\rm -f $(CLASSPATH)/*.class *~ \#* core $(JARFILES) TRACE
+	rm insertTest.class

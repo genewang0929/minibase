@@ -6,6 +6,7 @@ import diskmgr.*;
 import bufmgr.*;
 import heap.*;
 import btree.*;
+import java.util.Arrays;
 
 /**
  * LSHFIndexPage is an index page in the LSH-Forest prefix tree.
@@ -16,6 +17,10 @@ import btree.*;
  * Left link functionality is omitted because the LSH scheme does not require it.
  */
 public class LSHFIndexPage extends LSHFSortedPage {
+
+  public static boolean DEBUG = false;
+
+  public final static int BUCKET_NUM = 4;
 
   /**
    * Constructs an LSHFIndexPage by pinning the page with the given PageId.
@@ -58,6 +63,20 @@ public class LSHFIndexPage extends LSHFSortedPage {
     setType(NodeType.INDEX);
   }
 
+  // public void setBucketPageId(String key, PageId pageNo, int level) {
+  //   int[] hashArray = parseHashValue(key);
+  //   this.bucket_list[hashArray[level]] = pageNo;
+  // }
+
+  // public PageId getBucketPageId(int bucketNo) {
+  //   return this.bucket_list[bucketNo];
+  // }
+
+  // public int getBucketNo(PageId pageno) {
+  //   for (int i = 0;)
+  //   return
+  // }
+
   /**
    * Inserts a <key, PageID> entry into the index page.
    * @param key the key (hash value) to be inserted.
@@ -65,17 +84,26 @@ public class LSHFIndexPage extends LSHFSortedPage {
    * @return the RID where the entry was inserted, or null if no space left.
    * @throws IndexInsertRecException if insertion fails.
    */
-  public RID insertKey(KeyClass key, PageId pageNo) 
+  public RID insertKey(Vector100DKey key, PageId pageNo, int level) 
       throws IndexInsertRecException {
     RID rid;
     LSHFKeyDataEntry entry;
     try {
-      entry = new LSHFKeyDataEntry(key, pageNo);
+      entry = new LSHFKeyDataEntry(key.getKey(), pageNo);
       rid = super.insertRecord(entry);
+      // setBucketPageId(key.getKey(), pageNo, level);
       return rid;
     } catch (Exception e) {
       throw new IndexInsertRecException(e, "Insert failed");
     }
+  }
+
+  private int[] parseHashValue(String key, int keySize) {
+    int[] hashArray = new int[keySize];
+    for (int i = 0; i < keySize; i++) {
+      hashArray[i] = Integer.parseInt(key.split("_")[i]);
+    }
+    return hashArray;
   }
   
   /**
@@ -85,24 +113,44 @@ public class LSHFIndexPage extends LSHFSortedPage {
    * @return the PageId of the child to be searched next.
    * @throws IndexSearchException if the search fails.
    */
-  public PageId getPageNoByKey(KeyClass key) 
-      throws IndexSearchException {
+  public PageId getPageNoByKey(Vector100DKey key) 
+      throws IndexSearchException
+  {
     LSHFKeyDataEntry entry;
     int i;
     try {
       for (i = getSlotCnt() - 1; i >= 0; i--) {
         entry = LSHF.getEntryFromBytes(getpage(), getSlotOffset(i), 
                                      getSlotLength(i), this.getKeyType(), NodeType.INDEX);
+        // if (DEBUG) {
+        //   System.out.println("[LSHFIndexPage] getPageNoByKey(): key = " + key.getKey());
+        //   System.out.println("[LSHFIndexPage] getPageNoByKey(): entry.key = " + ((Vector100DKey)(entry.key)).getKey());
+        // }
         if (LSHF.keyCompare(key, entry.key) >= 0) {
           return ((IndexData)entry.data).getData();
         }
       }
       // If key is less than all entries, return the default pointer.
+      if (DEBUG) {
+        System.out.println("[LSHFIndexPage] getPageNoByKey(): returning -1");
+      }
       return getPrevPage();
     } catch (Exception e) {
       throw new IndexSearchException(e, "Get entry failed");
     }
   }
+
+  // public int[] parseHashValue(String hashvalue) throws NumberFormatException {
+  //   if (hashvalue == null || hashvalue.isEmpty()) {
+  //     throw new IllegalArgumentException("Hash value cannot be null or empty");
+  //   }
+  //   // Split the string by underscore
+  //   String[] parts = hashValue.split("_");
+  //   // Convert each part to an integer
+  //   int[] hashArray = Arrays.stream(parts).mapToInt(Integer::parseInt).toArray();
+    
+  //   return hashArray;
+  // }
 
   /**
    * Returns the first key-data entry on this index page.
@@ -117,6 +165,9 @@ public class LSHFIndexPage extends LSHFSortedPage {
       rid.pageNo = getCurPage();
       rid.slotNo = 0; // start with first slot
       if (getSlotCnt() == 0) {
+        if (DEBUG) {
+          System.out.println("[LSHFIndexPage] getFirst(): getSlotCnt() = 0");
+        }
         return null;
       }
       entry = LSHF.getEntryFromBytes(getpage(), getSlotOffset(0), 
