@@ -351,7 +351,7 @@ public class Convert{
       DataOutputStream outstr = new DataOutputStream (out);
 
       // write the value to the output stream
-      for (int dimension : value.getDimension()) {
+      for (short dimension : value.getDimension()) {
         outstr.writeShort(dimension);
       }
 

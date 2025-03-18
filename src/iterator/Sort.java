@@ -251,8 +251,8 @@ public class Sort extends Iterator implements GlobalConst {
         //	System.out.println("Putting tuple into run " + (run_num + 1));
         //	cur_node.tuple.print(_in);
 
-        System.out.println("current tuple: ");
-        cur_node.tuple.print(_in);
+//        System.out.println("current tuple: ");
+//        cur_node.tuple.print(_in);
 
         o_buf.Put(cur_node.tuple);
       }

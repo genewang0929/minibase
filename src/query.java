@@ -104,13 +104,14 @@ public class query {
 
           FileScan fileScan = new FileScan("batch_file", attrTypes, Ssizes, (short)attrTypes.length, qs.getOutputFields().length, projlist, null);
           Sort sortIterator = new Sort(attrTypes, (short) attrTypes.length, Ssizes,
-                  fileScan, qs.getQueryField(), order[1], 32, 500, targetVector, qs.getThreshold());
+                  fileScan, qs.getQueryField(), order[0], 32, 500, targetVector, qs.getThreshold());
 
           Tuple resultTuple;
           System.out.println("Result Tuple:");
           while ((resultTuple = sortIterator.get_next()) != null) {
             resultTuple.print(attrTypes);
           }
+          System.exit(1);
           sortIterator.close();
           fileScan.close();
         }
@@ -227,6 +228,8 @@ public class query {
    * The target vector file is expected to contain 100 integers, one for each dimension of the vector.
    */
   private static Vector100Dtype readTargetVector(String fileName) throws IOException {
+    if (!fileName.endsWith(".txt"))
+      fileName += ".txt";
     BufferedReader br = new BufferedReader(new FileReader("queries/" + fileName));
     String line = br.readLine().trim();
     br.close();
