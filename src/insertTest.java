@@ -28,6 +28,8 @@ public class insertTest {
             // Clean up before any operation
             String dbpath = "/tmp/" + System.getProperty("user.name") + "." + dbName;
             String logpath = "/tmp/" + System.getProperty("user.name") + ".log";
+            System.out.println("dbpath: " + dbpath);
+            System.exit(1);
             cleanup(logpath, dbpath);
 
             BufferedReader br = new BufferedReader(new FileReader(dataFilename));
@@ -72,8 +74,10 @@ public class insertTest {
                 tupleValues[0] = line;
                 for (int i = 1; i < numAttrs; i++) {
                     String nextLine = br.readLine();
-                    String truncated = nextLine.substring(0, 50);
-                    System.out.println("nextLine: " + truncated + "...");
+                    if (nextLine != null) {
+                        String truncated = nextLine.substring(0, 50);
+                        System.out.println("nextLine: " + truncated + "...");
+                    }
                     if (nextLine == null) {
                         eof = true;
                         System.err.println("End of file.");
@@ -92,11 +96,14 @@ public class insertTest {
                 RID rid = hf.insertRecord(tupleData);
                 System.out.printf("Inserted tuple with RID<%d, %d>\n", rid.pageNo.pid, rid.slotNo);
 
+                int inserting = 0;
                 // For every attribute of type 100D-vector, update the single LSHF index.
                 for (int i = 0; i < numAttrs; i++) {
-                    System.out.println("attrType: " + attrTypes[i].attrType);
+                    // System.out.println("attrType: " + attrTypes[i].attrType);
                     if (attrTypes[i].attrType == AttrType.attrVector100D) {
                         // Assume a getter exists: get100DVectFld(int fldNo) returning a Vector100Dtype.
+                        inserting++;
+                        System.out.println("Inserting vector "+ inserting);
                         Vector100Dtype vector = tuple.get100DVectFld(i + 1);
                         vectorIndex.insert(vector, rid);
                         System.out.printf("Updated LSHF index for attribute %d with RID<%d, %d>\n", i, rid.pageNo.pid, rid.slotNo);
@@ -168,7 +175,8 @@ public class insertTest {
                 }
                 short[] dims = new short[100];
                 for (int j = 0; j < 100; j++) {
-                    dims[j] = Short.parseShort(vecTokens[j].trim());
+                    float temp = Float.parseFloat(vecTokens[j].trim());
+                    dims[j] = (short) temp;
                 }
                 Vector100Dtype vector = new Vector100Dtype(dims);
                 tuple.set100DVectFld(i + 1, vector);

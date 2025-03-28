@@ -43,7 +43,7 @@ public class LSHFIndexFile {
 
     private Random rand;
 
-    protected final static int BUCKET_NUM = 4;
+    protected final static int BUCKET_NUM = 10;
 
     /**
      * Constructs a new LSHFIndexFile.
@@ -56,7 +56,7 @@ public class LSHFIndexFile {
         this.fileName = fileName;
         this.h = h;
         this.L = L;
-        this.rand = new Random(1);
+        this.rand = new Random();
 
         // Initialize one prefix tree per layer.
         prefixTrees = new LSHFPrefixTree[L];

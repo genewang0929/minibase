@@ -5,6 +5,7 @@ import bufmgr.*;
 import diskmgr.*;
 import global.*;
 import java.io.*;
+import java.util.HashMap;
 
 /**
  * LSHFPrefixTree implements a prefix tree for the LSH-Forest.
@@ -16,6 +17,8 @@ import java.io.*;
 public class LSHFPrefixTree {
 
   private static boolean DEBUG = true;
+
+  private HashMap<PageId, Short> pageTypeMap;
 
   // File name (base) for this prefix tree (used for header and pages)
   private String fileName;
@@ -40,9 +43,9 @@ public class LSHFPrefixTree {
 
   private final static int MAGIC0 = 1989;
 
-  protected final static int MAX_RECORDS_PER_LEAF = 2;
+  protected final static int MAX_RECORDS_PER_LEAF = 48;
 
-  protected final static int BUCKET_NUM = 4;
+  protected final static int BUCKET_NUM = 10;
 
   /**
    * Constructs a new LSHFPrefixTree.
@@ -57,6 +60,8 @@ public class LSHFPrefixTree {
     }
     this.fileName = fileName;
     this.keySize = keySize;
+
+    this.pageTypeMap = new HashMap<>();
 
     // Create a new header page.
     // In a full system, we would check if the file exists and open it; here we always create a new tree.
@@ -130,6 +135,16 @@ public class LSHFPrefixTree {
       newRootPage = new LSHFLeafPage( headerPage.get_keyType());
       newRootPageId = newRootPage.getCurPage();
 
+      // mapping
+      if (DEBUG) {
+        if (newRootPageId.pid != -1) {
+          setNodeType(newRootPageId, NodeType.LEAF);
+          System.out.println("New Root Page " + newRootPageId.pid + " is a leaf page.");
+        } else {
+          System.out.println("newRootPageId is -1, unexpected.");
+        }
+      }
+
       // newRootPage.setNextPage(new PageId(INVALID_PAGE));
       // newRootPage.setPrevPage(new PageId(INVALID_PAGE));
 
@@ -145,14 +160,14 @@ public class LSHFPrefixTree {
       return;
     }
 
-    // prin
+    // print
     PageId oldRootPageId = headerPage.get_rootId();
-    
+
     // unpinPage(oldRootPageId, true);
-    
+
     newRootEntry = _insert(key, rid, headerPage.get_rootId(), 0);
 
-    
+
 
     if (newRootEntry != null) {
       if (DEBUG) {
@@ -170,18 +185,39 @@ public class LSHFPrefixTree {
       PageId newRootPageId = ((IndexData)newRootEntry.data).getData();
       LSHFIndexPage newRootPage = new LSHFIndexPage(newRootPageId, headerPage.get_keyType());
 
+      // update mapping
+      if (DEBUG) {
+        if (newRootPageId.pid != -1) {
+          setNodeType(newRootPageId, NodeType.INDEX);
+          System.out.println("Page " + newRootPageId.pid + " is an index page.");
+        } else {
+          System.out.println("newRootPageId is -1, unexpected.");
+        }
+      }
+
+      // update mapping
+      if (DEBUG) {
+        if (oldRootPageId.pid != -1) {
+          removeNodeType(oldRootPageId);
+          System.out.println("Removing old root page: page " + oldRootPageId.pid);
+        } else {
+          System.out.println("oldRootPageId is -1, unexpected. Freeing an invalid page.");
+        }
+      }
+
       newRootPage.setPrevPage(headerPage.get_rootId());
       unpinPage(newRootPageId, true);
       updateHeader(newRootPageId);
       // unpinPage(oldRootPageId);
       freePage(oldRootPageId);
+
       try {
         insert(key, rid);
       } catch (Exception e) {
         System.out.println("insert error 1");
       }
     }
-    
+
 
 
     // if (newRootEntry != null) {
@@ -216,22 +252,21 @@ public class LSHFPrefixTree {
 
   private LSHFKeyDataEntry _insert(Vector100DKey key, RID rid, PageId currentPageId, int level)
   throws PinPageException,
-    IOException,
-    ConstructPageException,
-    LeafDeleteException,
-    ConstructPageException,
-    DeleteRecException,
-    IndexSearchException,
-    UnpinPageException,
-    LeafInsertRecException,
-    ConvertException,
-    IteratorException,
-    IndexInsertRecException,
-    KeyNotMatchException,
-    NodeNotMatchException,
-    InsertException,
-    Exception
-  {
+           IOException,
+           ConstructPageException,
+           LeafDeleteException,
+           ConstructPageException,
+           DeleteRecException,
+           IndexSearchException,
+           UnpinPageException,
+           LeafInsertRecException,
+           ConvertException,
+           IteratorException,
+           IndexInsertRecException,
+           KeyNotMatchException,
+           NodeNotMatchException,
+           InsertException,
+    Exception {
     int [] hashArray = parseHashValue(key.getKey());
 
     LSHFSortedPage currentPage;
@@ -245,21 +280,32 @@ public class LSHFPrefixTree {
     page = pinPage(currentPageId);  // unpin
     currentPage = new LSHFSortedPage(page, headerPage.get_keyType());
 
+    // reach leaf page
     if (currentPage.getType() == NodeType.LEAF) {
       LSHFLeafPage currentLeafPage = new LSHFLeafPage(page, headerPage.get_keyType());
       PageId currentLeafPageId = currentPageId;
 
+      // mapping
+      if (DEBUG) {
+        if (currentLeafPageId.pid != -1) {
+          setNodeType(currentLeafPageId, NodeType.LEAF);
+          System.out.println("Current Leaf Page " + currentLeafPageId.pid + " is a leaf page.");
+        } else {
+          System.out.println("currentLeafPageId is -1, unexpected.");
+        }
+      }
 
-      // base case: reach leaf from an index page
+      // base case: no split needed
       if (currentLeafPage.numberOfRecords() < MAX_RECORDS_PER_LEAF) {
         if (DEBUG) {
           System.out.println("[LSHFPrefixTree] _insert(): numberOfRecords = " + currentLeafPage.numberOfRecords());
         }
-        currentLeafPage.insertRecord(key, rid);
+        currentLeafPage.insertRecord(key, rid); // insert <key, rid>
         unpinPage(currentLeafPageId, true);
         return null;  // (no split)
       }
 
+      // overflow case: all hash functions have been used
       if (level >= keySize) {
         // create overflow page and insert
         if (DEBUG) {
@@ -268,7 +314,7 @@ public class LSHFPrefixTree {
         LSHFLeafPage overflowPage = new LSHFLeafPage(headerPage.get_keyType());
         PageId overflowPageId = overflowPage.getCurPage();
         currentLeafPage.setNextPage(overflowPageId);
-        overflowPage.insertRecord(key, rid);
+        overflowPage.insertRecord(key, rid);  // insert <key, rid>
         unpinPage(currentLeafPageId, true); // not sure if this is needed
         unpinPage(overflowPageId, true);
         return null;
@@ -277,7 +323,7 @@ public class LSHFPrefixTree {
 
       // }
 
-      // Split
+      // split case: reach max record number in a page
       if (DEBUG) {
         System.out.println("[LSHFPrefixTree] _insert(): Splitting leaf page " + currentLeafPageId);
         // try {
@@ -290,14 +336,26 @@ public class LSHFPrefixTree {
       LSHFIndexPage newIndexPage = new LSHFIndexPage(headerPage.get_keyType()); //need unpin
       PageId newIndexPageId = newIndexPage.getCurPage();
 
+      // update mapping
+      if (DEBUG) {
+        if (newIndexPageId.pid != -1) {
+          setNodeType(newIndexPageId, NodeType.INDEX);
+          System.out.println("Page " + newIndexPageId.pid + " is an index page.");
+        } else {
+          System.out.println("newIndexPageId is -1, unexpected.");
+        }
+      }
+
       if (DEBUG) {
         System.out.println("[LSHFPrefixTree] _insert(): newIndexPageId " + newIndexPageId);
       }
 
-      upEntry = new LSHFKeyDataEntry(Integer.toString(hashArray[level]), newIndexPageId);
+      // upEntry = new LSHFKeyDataEntry(Integer.toString(hashArray[level]), newIndexPageId); // ?
 
       // LSHFLeafPage[] newBuckets = new LSHFLeafPage[BUCKET_NUM];
       // PageId[] newBucketPageIds = new PageId[BUCKET_NUM];
+
+      boolean inserted = false;
 
       // NEED FIX
       // create buckets for all hash values
@@ -308,7 +366,26 @@ public class LSHFPrefixTree {
         newLeafPage = new LSHFLeafPage(headerPage.get_keyType());
         newLeafPageId = newLeafPage.getCurPage();
 
-        newIndexPage.insertKey(new Vector100DKey(Integer.toString(i)), newLeafPageId, level);
+        // mapping
+        if (DEBUG) {
+          if (newLeafPageId.pid != -1) {
+            setNodeType(newLeafPageId, NodeType.LEAF);
+            System.out.println("Page " + newLeafPageId.pid + " is a leaf page.");
+          } else {
+            System.out.println("newLeafPageId is -1, unexpected.");
+          }
+        }
+
+        newIndexPage.insertKey(new Vector100DKey(Integer.toString(i)), newLeafPageId, level); // insert <key, pid>
+
+        // insert record to corresponding new leaf page (bucket)
+        if (i == level) {
+          upEntry = _insert(key, rid, newLeafPageId, level);
+          if (upEntry == null) {
+            inserted = true;
+            System.out.println("[LSHFPrefixTree] Record inserted to leaf in split case.");
+          }
+        }
 
         // newBuckets[i] = newLeafPage;
         // newBucketPageIds[i] = newLeafPageId;
@@ -323,6 +400,12 @@ public class LSHFPrefixTree {
         // newLeafPage.setNextPage(currentLeafPage.getNextPage());
         // newLeafPage.setPrevPage(currentLeafPageId);  // for dbl-linked list
         // currentLeafPage.setNextPage(newLeafPageId);
+      }
+
+      if (!inserted) {
+        upEntry = new LSHFKeyDataEntry(Integer.toString(hashArray[level]), newIndexPageId); // ?
+      } else {
+        upEntry = null;
       }
 
       // newIndexPage.bucket_list = newBucketPageIds;  // Check later
@@ -353,12 +436,13 @@ public class LSHFPrefixTree {
 
       unpinPage(newIndexPageId, true);
 
-      if (DEBUG) {
+      if (DEBUG && upEntry != null) {
         System.out.println("***** [LSHFPrefixTree] upEntry check *****");
         System.out.println("upEntry.key: " + ((Vector100DKey)(upEntry.key)).getKey());
         System.out.println("upEntry.data: " + ((IndexData)upEntry.data).getData());
       }
       unpinPage(currentLeafPageId);
+
       return upEntry;
 
     } else if (currentPage.getType() == NodeType.INDEX) {
@@ -367,12 +451,28 @@ public class LSHFPrefixTree {
       PageId currentIndexPageId = currentPageId;
       PageId nextPageId;
 
+      // mapping
+      if (DEBUG) {
+        if (currentIndexPageId.pid != -1) {
+          setNodeType(currentIndexPageId, NodeType.INDEX);
+          System.out.println("Page " + currentIndexPageId.pid + " is an index page.");
+        } else {
+          System.out.println("currentLeafPageId is -1, unexpected.");
+        }
+      }
+
       if (DEBUG) {
         System.out.println("***** [LSHFPrefixTree] Before Split *****");
         System.out.println("currentIndexPage: page " + currentIndexPageId);
         for (int i = 0; i < BUCKET_NUM; i++) {
           Vector100DKey tmpKey = new Vector100DKey(Integer.toString(i));
-          System.out.println("leaf page: page " + currentIndexPage.getPageNoByKey(tmpKey).pid);
+          PageId childPageId = currentIndexPage.getPageNoByKey(tmpKey);
+          System.out.print("child page: page " + childPageId.pid + ", ");
+          if (isLeafPage(childPageId)) {
+            System.out.println("LEAF");
+          } else {
+            System.out.println("INDEX");
+          }
         }
       }
 
@@ -410,15 +510,32 @@ public class LSHFPrefixTree {
 
       currentIndexPage.insertKey((Vector100DKey)(upEntry.key), ((IndexData)upEntry.data).getData(), level);
 
+      // update mapping
+      if (DEBUG) {
+        if (oldLeafPageId.pid != -1) {
+          removeNodeType(oldLeafPageId);
+          System.out.println("Removing old leaf page: page " + oldLeafPageId.pid);
+        } else {
+          System.out.println("oldLeafPageId is -1, unexpected. Freeing an invalid page.");
+        }
+      }
 
       unpinPage(oldLeafPageId);
       freePage(oldLeafPageId);
+
       if (DEBUG) {
         System.out.println("***** [LSHFPrefixTree] After Split *****");
         System.out.println("currentIndexPage: page " + currentIndexPageId);
         for (int i = 0; i < BUCKET_NUM; i++) {
           Vector100DKey tmpKey = new Vector100DKey(Integer.toString(i));
-          System.out.println("leaf page: page " + currentIndexPage.getPageNoByKey(tmpKey).pid);
+          // System.out.println("child page: page " + currentIndexPage.getPageNoByKey(tmpKey).pid);
+          PageId childPageId = currentIndexPage.getPageNoByKey(tmpKey);
+          System.out.print("child page: page " + childPageId.pid + ", ");
+          if (isLeafPage(childPageId)) {
+            System.out.println("LEAF");
+          } else {
+            System.out.println("INDEX");
+          }
         }
       }
 
@@ -486,7 +603,7 @@ public class LSHFPrefixTree {
 
   private void updateHeader(PageId newRoot)
   throws   IOException,
-             PinPageException,
+    PinPageException,
     UnpinPageException {
     LSHFPrefixTreeHeaderPage header;
     PageId old_data;
@@ -510,5 +627,29 @@ public class LSHFPrefixTree {
       SystemDefs.JavabaseBM.unpinPage(headerPage.getPageId(), true);
       headerPage = null;
     }
+  }
+
+  // Method to add a mapping
+  public void setNodeType(PageId pageId, short type) {
+    if (pageTypeMap.containsKey(pageId)) {
+      System.out.println("Duplicate key found. The current value will not be inserted.");
+    } else {
+      pageTypeMap.put(pageId, type); // Insert new key-value pair
+    }
+  }
+
+  // Method to retrieve the node type
+  public short getNodeType(PageId pageId) {
+    return pageTypeMap.getOrDefault(pageId, null); // Return null if not found
+  }
+
+  // Method to check if a page is a leaf node
+  public boolean isLeafPage(PageId pageId) {
+    return pageTypeMap.getOrDefault(pageId, NodeType.INDEX) == NodeType.LEAF;
+  }
+
+  // Method to remove a mapping when a page is freed
+  public void removeNodeType(PageId pageId) {
+    pageTypeMap.remove(pageId);
   }
 }
