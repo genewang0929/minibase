@@ -367,6 +367,67 @@ public class TupleUtils {
     }
     return res_str_sizes;
   }
+
+  /**
+   * set up the Jtuple's attrtype, string size,field number for using project
+   *
+   * @param Jtuple       reference to an actual tuple  - no memory has been malloced
+   * @param res_attrs    attributes type of result tuple
+   * @param in1          array of the attributes of the tuple (ok)
+   * @param len_in1      num of attributes of in1
+   * @param out1         array of the attributes of output fields
+   * @param t1_str_sizes shows the length of the string fields in S
+   * @param proj_list    shows what input fields go where in the output tuple
+   * @param nOutFlds     number of outer relation fileds
+   * @throws IOException         some I/O fault
+   * @throws TupleUtilsException exception from this class
+   * @throws InvalidRelation     invalid relation
+   */
+  public static short[] setup_op_tuple(Tuple Jtuple, AttrType res_attrs[],
+                                       AttrType in1[], int len_in1, AttrType out1[],
+                                       short t1_str_sizes[],
+                                       FldSpec proj_list[], int nOutFlds)
+          throws IOException,
+          TupleUtilsException,
+          InvalidRelation {
+    short[] sizesT1 = new short[len_in1];
+    int i, count = 0;
+
+    for (i = 0; i < len_in1; i++)
+      if (in1[i].attrType == AttrType.attrString)
+        sizesT1[i] = t1_str_sizes[count++];
+
+    int n_strs = 0;
+    for (i = 0; i < nOutFlds; i++) {
+      if (proj_list[i].relation.key == RelSpec.outer) {
+        res_attrs[i] = new AttrType(out1[proj_list[i].offset - 1].attrType);
+      }
+
+      else throw new InvalidRelation("Invalid relation -innerRel");
+    }
+
+    // Now construct the res_str_sizes array.
+    for (i = 0; i < nOutFlds; i++) {
+      if (proj_list[i].relation.key == RelSpec.outer
+              && in1[proj_list[i].offset - 1].attrType == AttrType.attrString)
+        n_strs++;
+    }
+
+    short[] res_str_sizes = new short[n_strs];
+    count = 0;
+    for (i = 0; i < nOutFlds; i++) {
+      if (proj_list[i].relation.key == RelSpec.outer
+              && in1[proj_list[i].offset - 1].attrType == AttrType.attrString)
+        res_str_sizes[count++] = sizesT1[proj_list[i].offset - 1];
+    }
+
+    try {
+      Jtuple.setHdr((short) nOutFlds, res_attrs, res_str_sizes);
+    } catch (Exception e) {
+      throw new TupleUtilsException(e, "setHdr() failed");
+    }
+    return res_str_sizes;
+  }
 }
 
 

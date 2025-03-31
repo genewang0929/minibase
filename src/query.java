@@ -6,6 +6,7 @@ import heap.Tuple;
 import iterator.*;
 
 import java.io.*;
+import java.util.Arrays;
 
 public class query {
 
@@ -44,6 +45,12 @@ public class query {
       RelSpec rel = new RelSpec(RelSpec.outer);
       for (int i = 0; i < qs.getOutputFields().length; i++)
         projlist[i] = new FldSpec(rel, i + 1);
+
+      // Get output fields attributes types
+      AttrType[] outAttrTypes = new AttrType[qs.getOutputFields().length];
+      for (int i = 0; i < qs.getOutputFields().length; i++) {
+        outAttrTypes[i] = attrTypes[qs.getOutputFields()[i] - 1];
+      }
 
 
       // TODO: LSH Query
@@ -102,14 +109,20 @@ public class query {
           order[0] = new TupleOrder(TupleOrder.Ascending);
           order[1] = new TupleOrder(TupleOrder.Descending);
 
-          FileScan fileScan = new FileScan("batch_file", attrTypes, Ssizes, (short)attrTypes.length, qs.getOutputFields().length, projlist, null);
-          Sort sortIterator = new Sort(attrTypes, (short) attrTypes.length, Ssizes,
+          // print outputAttrTypes
+//          for (int i = 0; i < outAttrTypes.length; i++) {
+//            System.out.println(outAttrTypes[i].attrType);
+//          }
+
+          FileScan fileScan = new FileScan("batch_file", attrTypes, Ssizes, (short)attrTypes.length, outAttrTypes, qs.getOutputFields().length, projlist, null);
+
+          Sort sortIterator = new Sort(outAttrTypes, (short) outAttrTypes.length, Ssizes,
                   fileScan, qs.getQueryField(), order[0], 32, 500, targetVector, qs.getThreshold());
 
           Tuple resultTuple;
           System.out.println("Result Tuple:");
           while ((resultTuple = sortIterator.get_next()) != null) {
-            resultTuple.print(attrTypes);
+            resultTuple.print(outAttrTypes);
           }
           System.exit(1);
           sortIterator.close();
