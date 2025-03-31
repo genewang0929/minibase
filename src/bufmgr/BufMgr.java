@@ -361,7 +361,7 @@ class Clock extends Replacer {
  */
 public class BufMgr implements GlobalConst {
 
-  private static boolean DEBUG = true;
+  private static boolean DEBUG = false;
 
   /**
    * The hash table, only allocated once.

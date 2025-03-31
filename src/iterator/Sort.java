@@ -673,6 +673,23 @@ public class Sort extends Iterator implements GlobalConst {
     }
   }
 
+  /**
+   * Class constructor, take information about the tuples, and set up
+   * the sorting
+   *
+   * @param in             array containing attribute types of the relation
+   * @param len_in         number of columns in the relation
+   * @param str_sizes      array of sizes of string attributes
+   * @param am             an iterator for accessing the tuples
+   * @param sort_fld       the field number of the field to sort on
+   * @param sort_order     the sorting order (ASCENDING, DESCENDING)
+   * @param sort_field_len the length of the sort field
+   * @param n_pages        amount of memory (in pages) available for sorting
+   * @param Target         target vector that tuples in db are comparing to
+   * @param k              top k elements
+   * @throws IOException   from lower layers
+   * @throws SortException something went wrong in the lower layer.
+   */
   public Sort(AttrType[] in,
               short len_in,
               short[] str_sizes,

@@ -24,6 +24,8 @@ public class FileScan extends Iterator {
   private Tuple Jtuple;
   private int t1_size;
   private int nOutFlds;
+
+  private AttrType[] _out1;
   private CondExpr[] OutputFilter;
   public FldSpec[] perm_mat;
 
@@ -91,6 +93,72 @@ public class FileScan extends Iterator {
   }
 
   /**
+   * constructor
+   *
+   * @param file_name  heapfile to be opened
+   * @param in1[]      array showing what the attributes of the input fields are.
+   * @param s1_sizes[] shows the length of the string fields.
+   * @param len_in1    number of attributes in the input tuple
+   * @param out1       array showing what the attributes of the output fields are.
+   * @param n_out_flds number of fields in the out tuple
+   * @param proj_list  shows what input fields go where in the output tuple
+   * @param outFilter  select expressions
+   * @throws IOException         some I/O fault
+   * @throws FileScanException   exception from this class
+   * @throws TupleUtilsException exception from this class
+   * @throws InvalidRelation     invalid relation
+   */
+  public FileScan(String file_name,
+                  AttrType in1[],
+                  short s1_sizes[],
+                  short len_in1,
+                  AttrType out1[],
+                  int n_out_flds,
+                  FldSpec[] proj_list,
+                  CondExpr[] outFilter
+  )
+          throws IOException,
+          FileScanException,
+          TupleUtilsException,
+          InvalidRelation {
+    _in1 = in1;
+    in1_len = len_in1;
+    s_sizes = s1_sizes;
+
+    _out1 = out1;
+
+    Jtuple = new Tuple();
+    AttrType[] Jtypes = new AttrType[n_out_flds];
+    short[] ts_size;
+    ts_size = TupleUtils.setup_op_tuple(Jtuple, Jtypes, in1, len_in1, _out1, s1_sizes, proj_list, n_out_flds);
+
+    OutputFilter = outFilter;
+    perm_mat = proj_list;
+    nOutFlds = n_out_flds;
+    tuple1 = new Tuple();
+
+    try {
+      tuple1.setHdr((short) nOutFlds, _out1, s1_sizes);
+    } catch (Exception e) {
+      throw new FileScanException(e, "setHdr() failed");
+    }
+    t1_size = tuple1.size();
+
+    try {
+      f = new Heapfile(file_name);
+
+    } catch (Exception e) {
+      throw new FileScanException(e, "Create new heapfile failed");
+    }
+
+    try {
+      scan = f.openScan();
+    } catch (Exception e) {
+      throw new FileScanException(e, "openScan() failed");
+    }
+  }
+
+  /**
    * @return shows what input fields go where in the output tuple
    */
   public FldSpec[] show() {
@@ -129,7 +197,8 @@ public class FileScan extends Iterator {
 
       tuple1.setHdr(in1_len, _in1, s_sizes);
       if (PredEval.Eval(OutputFilter, tuple1, null, _in1, null) == true) {
-        Projection.Project(tuple1, _in1, Jtuple, perm_mat, nOutFlds);
+//        Projection.Project(tuple1, _in1, Jtuple, perm_mat, nOutFlds);
+        Projection.Project(tuple1, _out1, Jtuple, perm_mat, nOutFlds);
         return Jtuple;
       }
     }
