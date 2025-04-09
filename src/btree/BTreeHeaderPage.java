@@ -22,7 +22,7 @@ import heap.*;
    * magic0, rootId, keyType, maxKeySize, deleteFashion,
    * and type(=NodeType.BTHEAD)
    */
-class BTreeHeaderPage extends HFPage {
+public class BTreeHeaderPage extends HFPage {
   
   void setPageId(PageId pageno) 
     throws IOException 
