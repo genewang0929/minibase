@@ -2,8 +2,15 @@ package lshfindex;
 
 import btree.*;
 import bufmgr.*;
+import catalog.*;
+import diskmgr.Page;
+import heap.*;
 import global.AttrType;
+import global.Convert;
+import global.IndexType;
+import global.PageId;
 import global.RID;
+import global.SystemDefs;
 import global.Vector100Dtype;
 import java.io.IOException;
 import java.util.Random;
@@ -33,16 +40,19 @@ public class LSHFIndexFile {
     // and a corresponding offset "b". They are used to compute:
     //   h(x) = floor((a * x + b) / W)
     // aValues[layer][i] is a 100-dimensional vector (array of doubles)
-    private double[][][] aValues;
+    private byte[][][] aValues;
     // bOffsets[layer][i] is the offset for the i-th hash function in the given layer.
-    private double[][] bOffsets;
+    // private double[][] bOffsets;
 
     // Bucket width parameter from Andoni Indyk. This controls the quantization.
-    private final double W = 5000.0;
+    // private final double W = 5000.0;
 
     private Random rand;
 
-    protected final static int BUCKET_NUM = 2;
+    private static int M = 127;        // max magnitude we allow (fits in signed byte)
+    private static double scale = 20;  // 20σ → most values land in [-60,60]
+
+    private LSHFHeaderPage headerPage;
 
     /**
      * Constructs a new LSHFIndexFile.
@@ -56,30 +66,152 @@ public class LSHFIndexFile {
         this.h = h;
         this.L = L;
         this.rand = new Random();
-
-        // Allocate arrays for aValues and bOffsets.
-        aValues = new double[L][h][100];   // For each layer, for each hash function, a 100D vector.
-        bOffsets = new double[L][h];         // For each layer, for each hash function, an offset b.
-
-        // Initialize aValues and bOffsets.
-        for (int l = 0; l < L; l++) {
-            for (int i = 0; i < h; i++) {
-                for (int j = 0; j < 100; j++) {
-                    // Use a Gaussian distribution for aValues.
-                    aValues[l][i][j] = Math.max(-1, Math.min(1, rand.nextGaussian() / 3));
+    
+        // Try to get the header page ID from the file entry.
+        PageId headerPageId = SystemDefs.JavabaseDB.get_file_entry(fileName);
+        
+        if (headerPageId == null) {
+            // --- HEADER DOES NOT EXIST: Create a new header page and generate aValues ---
+            
+            // Allocate aValues and generate new ones.
+            System.out.println("[Read Header Test] hash function for " + fileName);
+            aValues = new byte[L][h][100];
+            for (int l = 0; l < L; l++) {
+                for (int i = 0; i < h; i++) {
+                    for (int j = 0; j < 100; j++) {
+                        double g = rand.nextGaussian();       // ~N(0,1)
+                        int q = (int)Math.round(g * scale);      // quantize using scale
+                        if (q > M) q = M;
+                        if (q < -M) q = -M;
+                        System.out.print(q + "; ");
+                        aValues[l][i][j] = (byte)q;
+                    }
                 }
-                // b is drawn uniformly from [1, W).
-                bOffsets[l][i] = rand.nextDouble() * (W - 1) + 1;
+            }
+
+            System.out.println("[Read Header Test] a values generated");
+            
+            // Create a new header page.
+            // headerPageId = new PageId();
+            headerPage = new LSHFHeaderPage(headerPageId, L, h);  // No-arg constructor creates a new page.
+            headerPageId = headerPage.getPageId();
+
+            if (DEBUG) {
+                System.out.println("[Read Header Test] headerPageId: " + headerPageId.pid);
+            }
+
+            SystemDefs.JavabaseDB.add_file_entry(fileName, headerPageId);
+            System.out.println("creating headerPageId = " + headerPageId.pid);
+            
+            // Store L and h in the header page (using the known offsets in LSHFHeaderPage)
+            Convert.setIntValue(L, LSHFHeaderPage.OFFSET_L, headerPage.getHFpageArray());
+            Convert.setIntValue(h, LSHFHeaderPage.OFFSET_h, headerPage.getHFpageArray());
+            // The LSHFHeaderPage constructor (init) should have already created space for L layer IDs and a-values.
+            
+            // Now, write the generated aValues into the header page.
+            for (int l = 0; l < L; l++) {
+                for (int i = 0; i < h; i++) {
+                    for (int j = 0; j < 100; j++) {
+                        headerPage.setAValue(l, i, j, aValues[l][i][j]);
+                    }
+                }
+            }
+        } else {
+            // --- HEADER EXISTS: Open the header page and read the stored aValues ---
+            headerPage = new LSHFHeaderPage(headerPageId);
+            
+            // Read L and h from header page.
+            int numLayers = headerPage.getNumLayers();
+            int numHashFuncs = headerPage.getNumHashFunctions();
+            // For consistency, one may want to check that numLayers == L and numHashFuncs == h.
+            if (numLayers != L || numHashFuncs != h) {
+                throw new Exception("Mismatch in L or h between catalog and parameters");
+            }
+            
+            // Allocate aValues array and load from the header page.
+            aValues = new byte[L][h][100];
+            for (int l = 0; l < L; l++) {
+                for (int i = 0; i < h; i++) {
+                    for (int j = 0; j < 100; j++) {
+                        aValues[l][i][j] = headerPage.getAValue(l, i, j);
+                    }
+                }
             }
         }
-
-        // Initialize one prefix tree per layer.
+        
+        // Now, initialize one prefix tree (BTreeFile) per layer.
         prefixTrees = new BTreeFile[L];
         for (int l = 0; l < L; l++) {
-            // Each prefix tree will use a file name unique to the layer.
-            // prefixTrees[l] = new LSHFPrefixTree(fileName + "_layer" + l, h/* , aValues[l], bOffsets[l]*/);
-            prefixTrees[l] = new BTreeFile(fileName + "_layer" + l, AttrType.attrInteger, /* key size */4, /* delete fashion: 0 for naive, 1 for full */1);
+            // Each prefix tree uses a unique file name (e.g., fileName_layer0, fileName_layer1, ...).
+            String layerName = fileName + "_layer" + l;
+            prefixTrees[l] = new BTreeFile(layerName, AttrType.attrInteger, 4, 1);
+            
+            // Get this B-tree's header page ID.
+            PageId btHeaderId = prefixTrees[l].getHeaderPage().getCurPage();
+            
+            // Record this header page ID in our LSHFHeaderPage.
+            headerPage.setLayerHeaderPageId(l, btHeaderId);
         }
+
+        System.out.println("[LSHFIndexFile] Finished creating file. PageId: " + headerPageId.pid);
+    }
+    
+
+    // constructor: open existing index file
+    public LSHFIndexFile(String fileName) throws Exception {
+        // Save file name.
+        this.fileName = fileName;
+        
+        // Open the header page.
+        String headerFileName = fileName;
+        
+        // Get the page ID of the header page from the database catalog.
+        PageId headerPageId = SystemDefs.JavabaseDB.get_file_entry(headerFileName);
+        System.out.println("[Read Header Test] try open: " + headerFileName);
+        if (headerPageId == null) {
+            throw new Exception("Header page not found for file: " + headerFileName);
+        }
+
+        System.out.println("opening: headerPageId = " + headerPageId.pid);
+        
+        this.headerPage = new LSHFHeaderPage(headerPageId);
+        // Pin the header page from the buffer manager.
+        SystemDefs.JavabaseBM.pinPage(headerPageId, this.headerPage, false);
+        
+        // Open the header page as an LSHFHeaderPage (assumes a constructor exists that accepts a Page).
+        // this.headerPage = new LSHFHeaderPage(headerPage);
+        
+        // Read the number of layers (L) and number of hash functions per layer (h)
+        int numLayers = headerPage.getNumLayers();
+        int numHashFuncs = headerPage.getNumHashFunctions();
+        this.L = numLayers;
+        this.h = numHashFuncs;
+        System.out.println("[Read Header Test] numLayers: " + this.L);
+        System.out.println("[Read Header Test] numHashFuncs: " + this.h);
+        
+        // Allocate the in-memory array for aValues and load them from the header page.
+        aValues = new byte[numLayers][numHashFuncs][100];
+        for (int l = 0; l < numLayers; l++) {
+            for (int i = 0; i < numHashFuncs; i++) {
+                for (int j = 0; j < 100; j++) {
+                    aValues[l][i][j] = headerPage.getAValue(l, i, j);
+                }
+            }
+        }
+        
+        // Open the prefix trees for each layer.
+        prefixTrees = new BTreeFile[numLayers];
+        for (int l = 0; l < numLayers; l++) {
+            // Each BTreeFile is assumed to have a unique file name.
+            String layerName = fileName + "_layer" + l;
+            prefixTrees[l] = new BTreeFile(layerName);  // Open existing B-tree index.
+        }
+        
+        // Optionally, initialize random if needed.
+        this.rand = new Random();
+        
+        // Unpin header page (if desired—depending on whether headerPage is kept in memory)
+        SystemDefs.JavabaseBM.unpinPage(headerPageId, false);
     }
 
     /**
@@ -92,31 +224,55 @@ public class LSHFIndexFile {
      * @param prefixLength the number of hash functions to use (allows self-tuning).
      * @return a String representing the concatenated hash value.
      */
+    /**
+    * Compute the LSH hash prefix for `vector` at `layer`,
+    * using up to `prefixLength` hash functions.
+    * aValues[layer][i][j] is a byte in [-127,127].
+    * vector.getDimension()[j] is a short.
+    */
     public String computeHash(Vector100Dtype vector, int layer, int prefixLength) {
-        short[] dims = vector.getDimension();
+        short[] dims = vector.getDimension();         // the 100D vector components
         StringBuilder sb = new StringBuilder();
-        int len = Math.min(prefixLength, h);
+        int len = Math.min(prefixLength, h);          // only use up to h hash functions
 
         for (int i = 0; i < len; i++) {
-            double dot = 0.0;
+            int dot = 0;
+            // accumulate in an int; byte*short → int
             for (int j = 0; j < 100; j++) {
                 dot += aValues[layer][i][j] * dims[j];
             }
-            // Compute the hash value using floor((dot + b) / W)
-            int hashVal = (int)(Math.floor(Math.abs(dot + bOffsets[layer][i]) % BUCKET_NUM));
-            sb.append(hashVal);
+            // bit = 1 if dot > 0, else 0
+            sb.append(dot > 0 ? '1' : '0');
         }
-
-        // double dot = 0.0;
-        // for (int j = 0; j < 100; j++) {
-        //     dot += aValues[layer][hashno][j] * dims[j];
-        // }
-        // // Compute the hash value using floor((dot + b) / W)
-        // int hashVal = (int)Math.floor((dot + bOffsets[layer][hashno]) / W);
-        // sb.append(hashVal);
 
         return sb.toString();
     }
+
+    // public String computeHash(Vector100Dtype vector, int layer, int prefixLength) {
+    //     short[] dims = vector.getDimension();
+    //     StringBuilder sb = new StringBuilder();
+    //     int len = Math.min(prefixLength, h);
+
+    //     for (int i = 0; i < len; i++) {
+    //         double dot = 0.0;
+    //         for (int j = 0; j < 100; j++) {
+    //             dot += aValues[layer][i][j] * dims[j];
+    //         }
+    //         // Compute the hash value using floor((dot + b) / W)
+    //         int hashVal = (int)(Math.floor(Math.abs(dot/* + bOffsets[layer][i]*/)));
+    //         sb.append(hashVal);
+    //     }
+
+    //     // double dot = 0.0;
+    //     // for (int j = 0; j < 100; j++) {
+    //     //     dot += aValues[layer][hashno][j] * dims[j];
+    //     // }
+    //     // // Compute the hash value using floor((dot + b) / W)
+    //     // int hashVal = (int)Math.floor((dot + bOffsets[layer][hashno]) / W);
+    //     // sb.append(hashVal);
+
+    //     return sb.toString();
+    // }
 
     /**
      * Inserts a new 100D vector (with its corresponding RID) into the index.
@@ -154,4 +310,26 @@ public class LSHFIndexFile {
             System.out.println("Prefix Tree " + l + " closed.");
         }
     }
+
+    public void printAValues() throws IOException {
+        // Get the number of layers and hash functions from the header page.
+        int numLayers = headerPage.getNumLayers();
+        int numHashFuncs = headerPage.getNumHashFunctions();
+    
+        System.out.println("LSH Forest A values:");
+        for (int l = 0; l < numLayers; l++) {
+            System.out.println("Layer " + l + ":");
+            for (int i = 0; i < numHashFuncs; i++) {
+                System.out.print("  Hash function " + i + ": ");
+                for (int j = 0; j < 100; j++) {
+                    // Retrieve each a value from the header page.
+                    byte a = headerPage.getAValue(l, i, j);
+                    System.out.print(a + " ");
+                }
+                System.out.println();  // newline after each hash function
+            }
+            System.out.println();      // extra newline after each layer
+        }
+    }
+    
 }
