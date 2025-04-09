@@ -53,6 +53,7 @@ public class LSHFIndexFile {
     private static double scale = 20;  // 20σ → most values land in [-60,60]
 
     private LSHFHeaderPage headerPage;
+    private PageId headerPageId;
 
     /**
      * Constructs a new LSHFIndexFile.
@@ -68,7 +69,7 @@ public class LSHFIndexFile {
         this.rand = new Random();
     
         // Try to get the header page ID from the file entry.
-        PageId headerPageId = SystemDefs.JavabaseDB.get_file_entry(fileName);
+        headerPageId = SystemDefs.JavabaseDB.get_file_entry(fileName);
         
         if (headerPageId == null) {
             // --- HEADER DOES NOT EXIST: Create a new header page and generate aValues ---
@@ -93,7 +94,7 @@ public class LSHFIndexFile {
             
             // Create a new header page.
             // headerPageId = new PageId();
-            headerPage = new LSHFHeaderPage(headerPageId, L, h);  // No-arg constructor creates a new page.
+            headerPage = new LSHFHeaderPage(/*headerPageId,*/ L, h);  // No-arg constructor creates a new page.
             headerPageId = headerPage.getPageId();
 
             if (DEBUG) {
@@ -308,6 +309,10 @@ public class LSHFIndexFile {
             // prefixTrees[l].closePrefixTree();
             prefixTrees[l].close();
             System.out.println("Prefix Tree " + l + " closed.");
+        }
+        if ( headerPage != null) {
+            SystemDefs.JavabaseBM.unpinPage(headerPageId, true);
+            headerPage = null;
         }
     }
 

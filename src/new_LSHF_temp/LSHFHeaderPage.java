@@ -36,7 +36,7 @@ public class LSHFHeaderPage extends HFPage {
     // // We'll call that offset OFFSET_A_VALUES = OFFSET_LAYER_PAGEIDS + (L * 4)
 
     // Constructor to create a new LSHFHeaderPage with given L and h
-    public LSHFHeaderPage(PageId pageNo, int L, int h) throws Exception {
+    public LSHFHeaderPage(/*PageId pageNo,*/ int L, int h) throws Exception {
         super();
         // try {
 
@@ -45,11 +45,17 @@ public class LSHFHeaderPage extends HFPage {
         //     System.out.println("pinpage failed");
         // }
         // Create a new page (assuming newPage was already called and we have a Page apage)
-        Page apage = new Page();
-        // We assume that a new page is allocated by the buffer manager.
-        // (In actual code, you’d call newPage, then pass the Page object to init(...))
-        init(pageNo, apage);
-
+        try {
+            Page apage = new Page();
+            PageId pageNo = SystemDefs.JavabaseBM.newPage(apage, 1);
+            // CHECK
+            if (pageNo == null) {
+                System.out.println("construct header page failed");
+            }
+            this.init(pageNo, apage);
+        } catch (Exception e) {
+            System.out.println("construct header page failed");
+        }
         // for (int i = OFFSET_CUSTOM; i < MAX_SPACE; i++) {
         //     data[i] = 0;
         // }
@@ -103,6 +109,7 @@ public class LSHFHeaderPage extends HFPage {
     throws Exception {
         super();
         try {
+            System.out.println("[Read Header Test] try open pageno: " + pageno.pid);
             SystemDefs.JavabaseBM.pinPage(pageno, this, false/*Rdisk*/);
         } catch (Exception e) {
             System.out.println("[LSHFHeaderPage] pinpage failed.");
