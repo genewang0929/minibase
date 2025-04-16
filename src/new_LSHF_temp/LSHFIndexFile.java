@@ -62,7 +62,7 @@ public class LSHFIndexFile {
      * @param L the number of layers.
      * @throws Exception if initialization fails.
      */
-    public LSHFIndexFile(String fileName, int h, int L) throws Exception {
+    public LSHFIndexFile(String fileName, int h, int L, int nAttrs, AttrType[] attrTypes) throws Exception {
         this.fileName = fileName;
         this.h = h;
         this.L = L;
@@ -94,7 +94,7 @@ public class LSHFIndexFile {
             
             // Create a new header page.
             // headerPageId = new PageId();
-            headerPage = new LSHFHeaderPage(/*headerPageId,*/ L, h);  // No-arg constructor creates a new page.
+            headerPage = new LSHFHeaderPage(/*headerPageId,*/ L, h, nAttrs, attrTypes);  // No-arg constructor creates a new page.
             headerPageId = headerPage.getPageId();
 
             if (DEBUG) {
@@ -295,6 +295,18 @@ public class LSHFIndexFile {
 
             prefixTrees[layer].insert(convertedKey, rid);
         }
+    }
+
+    public int getL() {
+        return L;
+    }
+
+    public int getH() {
+        return h;
+    }
+
+    public BTreeFile getTree(int layer) {
+        return prefixTrees[layer];
     }
 
     /** Close the LSHF index file.  Unpin header page.

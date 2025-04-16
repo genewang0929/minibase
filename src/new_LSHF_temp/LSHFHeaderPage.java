@@ -2,7 +2,8 @@ package lshfindex;
 
 import diskmgr.*;
 import global.*;
-import heap.*;
+import heap.HFPage;
+
 import java.io.*;
 
 /**
@@ -22,29 +23,27 @@ public class LSHFHeaderPage extends HFPage {
     public static final int OFFSET_L = OFFSET_MAGIC + 4;     // store L (num of layers)
     public static final int OFFSET_h = OFFSET_L + 4;           // store h (num of hash functions)
     public static final int OFFSET_LAYER_PAGEIDS = OFFSET_h + 4;  // then L * 4 bytes for header page IDs
-    // The block for a values then starts at:
+    // a-values block: For each layer and each hash function, 100 bytes:
+    // Total a-values bytes = L * h * 100
+    public static final int OFFSET_A_VALUES = OFFSET_LAYER_PAGEIDS;   // then L * 4 bytes are used, so:
+    // Actually, more precisely, 
     // OFFSET_A_VALUES = OFFSET_LAYER_PAGEIDS + (L * 4)
 
-    // private final static int MAGIC0 = 1989;
-
-    // // Offsets in bytes within the page:
-    // public static final int OFFSET_CUSTOM = DPFIXED;           // DPFIXED is defined in HFPage (usually 20)
-    // public static final int OFFSET_L = OFFSET_CUSTOM;                     // 4 bytes for L
-    // public static final int OFFSET_h = OFFSET_L + 4;            // 4 bytes for h
-    // public static final int OFFSET_LAYER_PAGEIDS = OFFSET_h + 4; // L * 4 bytes (we don't know L until runtime)
-    // // The block for a values starts immediately after the layer-page IDs.
-    // // We'll call that offset OFFSET_A_VALUES = OFFSET_LAYER_PAGEIDS + (L * 4)
+    // Let:
+    // OFFSET_ATTR_COUNT = OFFSET_A_VALUES + (L * h * 100)
+    // OFFSET_ATTR_TYPES  = OFFSET_ATTR_COUNT + 4
+    public static final int OFFSET_ATTR_COUNT = OFFSET_A_VALUES + /*(L * h * 100)*/ 0; // We'll compute dynamically.
+    // Since L and h aren’t known at compile time, we'll compute OFFSET_A_VALUES and OFFSET_ATTR_COUNT in the constructor.
+    
+    // We'll store our custom metadata sequentially:
+    // [Magic (4) | L (4) | h (4) | LayerIDs (L*4) | aValues (L*h*100) | nAttrs (4) | attrTypes (nAttrs*4) ]
+    
+    // We assume that the overall space (from OFFSET_CUSTOM up to MAX_SPACE) is sufficient.
 
     // Constructor to create a new LSHFHeaderPage with given L and h
-    public LSHFHeaderPage(/*PageId pageNo,*/ int L, int h) throws Exception {
+    public LSHFHeaderPage(/*PageId pageNo,*/ int L, int h, int nAttrs, AttrType[] attrTypes) throws Exception {
         super();
-        // try {
 
-        //     SystemDefs.JavabaseBM.pinPage(pageNo, this, false/*Rdisk*/);
-        // } catch (Exception e) {
-        //     System.out.println("pinpage failed");
-        // }
-        // Create a new page (assuming newPage was already called and we have a Page apage)
         try {
             Page apage = new Page();
             PageId pageNo = SystemDefs.JavabaseBM.newPage(apage, 1);
@@ -102,6 +101,24 @@ public class LSHFHeaderPage extends HFPage {
         for (int i = 0; i < totalABytes; i++) {
             data[offsetA + i] = 0;
         }
+
+        // Now, store the attribute types.
+        int offsetAttrCount = offsetA + totalABytes;  // This is OFFSET_ATTR_COUNT.
+        Convert.setIntValue(nAttrs, offsetAttrCount, data);
+        int offsetAttrTypes = offsetAttrCount + 4;      // This is OFFSET_ATTR_TYPES.
+        // Each attribute type is stored as an int. We assume attrTypes != null and length == nAttrs.
+        for (int i = 0; i < nAttrs; i++) {
+            Convert.setIntValue(attrTypes[i].attrType, offsetAttrTypes, data);
+            offsetAttrTypes += 4;
+        }
+        
+        if (DEBUG) {
+            System.out.println("[LSHFHeaderPage:New] Dumping header from offset " + OFFSET_CUSTOM + " to " + offsetAttrTypes);
+            for (int i = OFFSET_CUSTOM; i < offsetAttrTypes; i += 4) {
+                int val = Convert.getIntValue(i, data);
+                System.out.printf("Offset %2d: %d (0x%08X)%n", i, val, val);
+            }
+        }
     }
 
     // constructor to open an existing header page
@@ -136,8 +153,7 @@ public class LSHFHeaderPage extends HFPage {
         }
     }
 
-    PageId getPageId()
-    throws IOException {
+    PageId getPageId() throws IOException {
         return getCurPage();
     }
 
@@ -223,5 +239,41 @@ public class LSHFHeaderPage extends HFPage {
         int offsetA = OFFSET_LAYER_PAGEIDS + L * 4;
         int basePos = offsetA + (layer * h * 100) + (hashIndex * 100);
         System.arraycopy(arr, 0, data, basePos, 100);
+    }
+
+    // Get the number of attributes.
+    public int getAttrCount() throws IOException {
+        int numLayers = getNumLayers();
+        int numHashFuncs = getNumHashFunctions();
+        int offsetAttrCount = OFFSET_LAYER_PAGEIDS + (numLayers * 4) + (numLayers * numHashFuncs * 100);
+        return Convert.getIntValue(offsetAttrCount, data);
+    }
+    
+    // Get the attribute types as an array.
+    public int[] getAttrTypes() throws IOException {
+        int nAttrs = getAttrCount();
+        int[] types = new int[nAttrs];
+        int numLayers = getNumLayers();
+        int numHashFuncs = getNumHashFunctions();
+        int offset = OFFSET_LAYER_PAGEIDS + (numLayers * 4) + 4; // after attr count field
+        for (int i = 0; i < nAttrs; i++) {
+            types[i] = Convert.getIntValue(offset, data);
+            offset += 4;
+        }
+        return types;
+    }
+
+    // Set attribute types.
+    public void setAttrTypes(int[] attrTypes) throws IOException {
+        int nAttrs = attrTypes.length;
+        int numLayers = getNumLayers();
+        int numHashFuncs = getNumHashFunctions();
+        int offset = OFFSET_LAYER_PAGEIDS + (numLayers * 4) + 0; // first write attr count here
+        Convert.setIntValue(nAttrs, offset, data);
+        offset += 4;
+        for (int i = 0; i < nAttrs; i++) {
+            Convert.setIntValue(attrTypes[i], offset, data);
+            offset += 4;
+        }
     }
 }

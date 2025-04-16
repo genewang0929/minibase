@@ -1,6 +1,7 @@
 package lshfindex;
 
 import btree.*;
+import btree.BTFileScan;
 import global.*;
 import diskmgr.*;
 import bufmgr.*;
@@ -46,6 +47,9 @@ public class LSHFFileScan /*extends IndexFileScan*/ implements GlobalConst {
         this.query = query;
         this.L = indexFile.getL();
         this.h = indexFile.getH();
+        if (DEBUG) {
+            System.out.println("Heap file record count: " + dataHeapFile.getRecCnt());
+        }
     }
 
     /**
@@ -59,11 +63,16 @@ public class LSHFFileScan /*extends IndexFileScan*/ implements GlobalConst {
      * @return An array of candidate tuples satisfying the range condition.
      * @throws ScanIteratorException if scan iteration fails.
      */
-    public Tuple[] LSHFFileRangeScan(KeyClass key, int distanceThreshold) throws ScanIteratorException {
+    public Tuple[] LSHFFileRangeScan(KeyClass key, int distanceThreshold, AttrType[] type, int queryField /*, short[] strSizes, short numFlds*/) throws ScanIteratorException {
         int ignoreBits = 0;
         List<Tuple> resultCandidates = new ArrayList<>();
         boolean foundSatisfactory = false;
         String bitStr = key.toString();
+
+        short[] strSizes = new short[1];
+        strSizes[0] = 30;
+
+        short numFlds = (short)type.length;
         
         while (!foundSatisfactory && ignoreBits <= bitStr.length()) {
             // Calculate lower and upper bounds based on the current precision.
@@ -90,14 +99,29 @@ public class LSHFFileScan /*extends IndexFileScan*/ implements GlobalConst {
                     while ((entry = treeScan.get_next()) != null) {
                         totalCount++;
                         Tuple tup = fetchTuple(entry);
+                        tup.setHdr(numFlds, type, strSizes);
                         // Extract the vector from tup. (using sample data 2 to test, fld 2 and fld 4 is 100D.)
-                        // NEED FURTHER IMPLEMENTATION
-                        Vector100Dtype candidateVector = tup.get100DVectFld(2);
+                        // NEED FIX
+                        if (DEBUG) {
+                            int tupLen = tup.getLength();
+                            System.out.println("Length of tuple:" + tupLen);
+                            short tupSize = tup.size();
+                            System.out.println("Size of tuple:" + tupSize);
+                            System.out.println("[Range Search Test] tuple content:");
+                            tup.print(type);
+                            System.out.println("[Range Search Test] tuple fldCnt: " + tup.noOfFlds());
+                        }
+                        Vector100Dtype candidateVector = tup.get100DVectFld(queryField);
                         double dist = computeEuclideanDistance(query, candidateVector);
                         if (dist < distanceThreshold) {
                             allCandidates.add(tup);
                         }
+                        System.out.println("pageNo of RID: " + entry.data.toString());
                     }
+
+                    
+                    // System.out.println("slotNo of RID: " + entry..slotNo);
+
                     treeScan.DestroyBTreeFileScan();
                 } catch (Exception e) {
                     throw new ScanIteratorException(e, "Error scanning layer " + layer);
@@ -129,10 +153,15 @@ public class LSHFFileScan /*extends IndexFileScan*/ implements GlobalConst {
      * @return an array of the nearest candidate tuples.
      * @throws ScanIteratorException if scanning fails.
      */
-    public Tuple[] LSHFFileNNScan(KeyClass key, int count) throws ScanIteratorException {
+    public Tuple[] LSHFFileNNScan(KeyClass key, int count, AttrType[] type, int queryField) throws ScanIteratorException {
         int ignoreBits = 0;
         List<TupleDistance> candidateList = new ArrayList<>();
         String bitStr = key.toString();
+
+        short[] strSizes = new short[1];
+        strSizes[0] = 30;
+
+        short numFlds = (short)type.length;
 
         // Loop until we have sufficient candidates (or we drop all bits).
         while (ignoreBits <= bitStr.length()) {
@@ -151,9 +180,19 @@ public class LSHFFileScan /*extends IndexFileScan*/ implements GlobalConst {
                     KeyDataEntry entry;
                     while ((entry = treeScan.get_next()) != null) {
                         Tuple tup = fetchTuple(entry);
-                        Vector100Dtype candidateVector = tup.get100DVectFld(1);
+                        tup.setHdr(numFlds, type, strSizes);
+                        Vector100Dtype candidateVector = tup.get100DVectFld(queryField);
                         double dist = computeEuclideanDistance(query, candidateVector);
                         candidateList.add(new TupleDistance(tup, dist));
+                        if (DEBUG) {
+                            int tupLen = tup.getLength();
+                            System.out.println("Length of tuple:" + tupLen);
+                            short tupSize = tup.size();
+                            System.out.println("Size of tuple:" + tupSize);
+                            System.out.println("[Range Search Test] tuple content:");
+                            tup.print(type);
+                            System.out.println("[Range Search Test] tuple fldCnt: " + tup.noOfFlds());
+                        }
                     }
                     treeScan.DestroyBTreeFileScan();
                 } catch (Exception e) {
@@ -201,8 +240,10 @@ public class LSHFFileScan /*extends IndexFileScan*/ implements GlobalConst {
             throw new ScanIteratorException(null, "Entry does not contain a RID; it's not a leaf entry.");
         }
     
-        RID rid = ((LeafData) entry.data).getData();
+        RID rid = ((LeafData)entry.data).getData();
+        // RID rid = (entry.data).getData();
         try {
+            System.out.println("RID of tuple" + rid.toString());
             return dataHeapFile.getRecord(rid);
         } catch (Exception e) {
             throw new ScanIteratorException(e, "Error fetching tuple for RID: " + rid);
@@ -218,6 +259,11 @@ public class LSHFFileScan /*extends IndexFileScan*/ implements GlobalConst {
      * @return an int array of length 2: {lowerBound, upperBound}.
      */
     public static int[] getPrefixRange(String bitString, int ignoreBits) {
+
+        if (DEBUG) {
+            System.out.println("[Range Search Test] bitString: " + bitString);
+        }
+
         int prefixLength = bitString.length() - ignoreBits;
         if (prefixLength < 0) {
             throw new IllegalArgumentException("Cannot ignore more bits than the string length.");
