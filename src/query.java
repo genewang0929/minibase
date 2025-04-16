@@ -4,6 +4,7 @@ import global.*;
 import heap.Heapfile;
 import heap.Tuple;
 import iterator.*;
+import lshfindex.*;
 
 import java.io.*;
 import java.util.Arrays;
@@ -55,28 +56,27 @@ public class query {
 
       // TODO: LSH Query
       if (indexOption.equalsIgnoreCase("Y")) {
-//        if (qs.getQueryType() == QueryType.RANGE) {
-//          LSHFIndex lshIndex = new LSHFIndex(dbName + "_index");
-//          // Create a range scan with the LSH index.
-//          LSHFFileRangeScan rangeScan = new LSHFFileRangeScan(lshIndex, qs.getQueryField(), targetVector, qs.getThreshold());
-//
-//          Tuple tuple;
-//          while ((tuple = rangeScan.getNext()) != null) {
-//            outputTuple(tuple, qs.getOutputFields());
-//          }
-//          rangeScan.close();
-//        }
-//        else if (qs.getQueryType() == QueryType.NN) {
-//          LSHFIndex lshIndex = new LSHFIndex(dbName + "_index");
-//          // Here, qs.getThreshold() represents K (the number of nearest neighbors).
-//          LSHFFileNNScan nnScan = new LSHFFileNNScan(lshIndex, qs.getQueryField(), targetVector, qs.getThreshold());
-//
-//          Tuple tuple;
-//          while ((tuple = nnScan.getNext()) != null) {
-//            tuple.print(attrTypes);
-//          }
-//          nnScan.close();
-//        }
+        String indexFileName = "batch_index_file";
+        LSHFIndexFile lshf = new LSHFIndexFile(indexFileName);
+        // Heapfile hf = new Heapfile("batch_file");
+        LSHFFileScan scan = new LSHFFileScan(lshf, heapFile, targetVector);
+        String keyStr = lshf.computeHash(targetVector, 0, lshf.getH());
+        Vector100DKey key = new Vector100DKey(keyStr);
+        if (qs.getQueryType() == QueryType.RANGE) {
+          
+          // IntegerKey convertedKey = LSHF.convertKey(key);
+          Tuple[] results = scan.LSHFFileRangeScan(key, qs.getThreshold(), attrTypes, qs.getQueryField());
+          
+          if (results != null && results.length != 0) {
+            System.out.println("Range Search Test: " + results[0]);
+          }
+        } else if (qs.getQueryType() == QueryType.NN) {
+          Tuple[] results = scan.LSHFFileNNScan(key, qs.getThreshold(), attrTypes, qs.getQueryField());
+          
+          if (results != null && results.length != 0) {
+            System.out.println("Range Search Test: " + results[0]);
+          }
+        }
       }
       else {
         // Full scan without using any index.
