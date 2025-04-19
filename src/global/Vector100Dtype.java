@@ -30,4 +30,17 @@ public class Vector100Dtype {
         this.dimension[i] = dimension[i];
     }
   }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) return true;
+    if (obj == null || getClass() != obj.getClass()) return false;
+    Vector100Dtype that = (Vector100Dtype) obj;
+    for (int i = 0; i < 100; i++) {
+      if (this.dimension[i] != that.dimension[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
 }
