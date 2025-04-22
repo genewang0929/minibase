@@ -1,2 +1,9 @@
 # All the Makefiles
 Makefile
+
+# All the .class files
+*.class
+
+# All the .idea files
+.idea/
+*.iml
