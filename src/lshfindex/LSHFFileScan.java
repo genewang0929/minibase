@@ -10,14 +10,14 @@ import java.io.*;
 import java.util.*;
 
 // Helper class to pair a tuple with its computed Euclidean distance.
-class TupleDistance {
-    Tuple tuple;
-    double distance;
-    public TupleDistance(Tuple tuple, double distance) {
-        this.tuple = tuple;
-        this.distance = distance;
-    }
-}
+// class TupleDistance {
+//     Tuple tuple;
+//     double distance;
+//     public TupleDistance(Tuple tuple, double distance) {
+//         this.tuple = tuple;
+//         this.distance = distance;
+//     }
+// }
 
 /**
  * LSHFFileScan provides a scan interface for an LSH forest.
@@ -73,6 +73,9 @@ public class LSHFFileScan /*extends IndexFileScan*/ implements GlobalConst {
         strSizes[0] = 30;
 
         short numFlds = (short)type.length;
+
+        // A set to record the unique identifiers (RIDs) of the tuples we've already seen.
+        HashSet<String> seen = new HashSet<>();
         
         while (!foundSatisfactory && ignoreBits <= bitStr.length()) {
             // Calculate lower and upper bounds based on the current precision.
@@ -100,8 +103,17 @@ public class LSHFFileScan /*extends IndexFileScan*/ implements GlobalConst {
                         totalCount++;
                         Tuple tup = fetchTuple(entry);
                         tup.setHdr(numFlds, type, strSizes);
+
+                        RID rid = ((LeafData)entry.data).getData();
+                        String ridStr = rid.pageNo.pid + ":" + rid.slotNo;
+                        // Skip if we've seen this tuple already.
+                        if (!seen.add(ridStr)) {
+                            continue;
+                        }
+
                         // Extract the vector from tup. (using sample data 2 to test, fld 2 and fld 4 is 100D.)
                         // NEED FIX
+                        
                         if (DEBUG) {
                             int tupLen = tup.getLength();
                             System.out.println("Length of tuple:" + tupLen);
@@ -163,6 +175,8 @@ public class LSHFFileScan /*extends IndexFileScan*/ implements GlobalConst {
 
         short numFlds = (short)type.length;
 
+        HashSet<String> seen = new HashSet<>();
+
         // Loop until we have sufficient candidates (or we drop all bits).
         while (ignoreBits <= bitStr.length()) {
             // Determine the current range.
@@ -179,6 +193,12 @@ public class LSHFFileScan /*extends IndexFileScan*/ implements GlobalConst {
                     if (treeScan == null) continue;
                     KeyDataEntry entry;
                     while ((entry = treeScan.get_next()) != null) {
+                        RID rid = ((LeafData)entry.data).getData();
+                        String ridStr = rid.pageNo.pid + ":" + rid.slotNo;
+                        if (!seen.add(ridStr)) {
+                            continue;
+                        }
+
                         Tuple tup = fetchTuple(entry);
                         tup.setHdr(numFlds, type, strSizes);
                         Vector100Dtype candidateVector = tup.get100DVectFld(queryField);
