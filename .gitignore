@@ -4,6 +4,10 @@ Makefile
 # All the .class files
 *.class
 
+# ALl the generated db files
+dbinstance/
+schemas/
+
 # All the .idea files
 .idea/
 *.iml
