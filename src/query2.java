@@ -32,12 +32,16 @@ public class query2 {
     BufMgr bufMgr = new BufMgr(numBuf, null);
 
     try {
-      QuerySpec qs = parseQuerySpec(qsName);
+      QuerySpec[] qs_list = parseQuerySpec(qsName);
+      QuerySpec qs = qs_list[0];
+      QuerySpec qs2 = qs_list[1];
+
       Vector100Dtype targetVector = readTargetVector(
               qs.getTargetFileName()
       );
 
-      Heapfile heapFile = new Heapfile(relName1);
+      Heapfile heapFile1 = new Heapfile(relName1);
+      Heapfile heapFile2 = new Heapfile(relName2);
 
       AttrType[] attrTypes = null;
       short[] Ssizes = new short[1];
@@ -57,47 +61,170 @@ public class query2 {
         outAttrTypes[i] = attrTypes[qs.getOutputFields()[i] - 1];
       }
 
-      if (qs.getQueryType() == QueryType.SORT) {
+      if (qs2.getQueryType() != null) {
+        // DJOIN operation
+      }
+      else if (qs.getQueryType() == QueryType.SORT) {
         // Sort operation
-        sort_query(
+        FileScan fileScan = new FileScan(
                 relName1,
                 attrTypes,
-                outAttrTypes,
                 Ssizes,
-                targetVector,
-                qs,
-                projlist
+                (short) attrTypes.length,
+                outAttrTypes,
+                qs.getOutputFields().length,
+                projlist,
+                null
         );
-      } else if (qs.getQueryType() == QueryType.FILTER) {
+
+        TupleOrder[] order = new TupleOrder[2];
+        order[0] = new TupleOrder(TupleOrder.Ascending);
+        order[1] = new TupleOrder(TupleOrder.Descending);
+        Sort sortIterator = new Sort(
+                outAttrTypes,
+                (short) outAttrTypes.length,
+                Ssizes,
+                fileScan,
+                qs.getQueryField(),
+                order[0],
+                32,
+                500,
+                targetVector,
+                qs.getThreshold()
+        );
+        Tuple resultTuple;
+        System.out.println("Result Tuple:");
+        while ((resultTuple = sortIterator.get_next()) != null) {
+          resultTuple.print(outAttrTypes);
+        }
+        sortIterator.close();
+        fileScan.close();
+      }
+      else if (qs.getQueryType() == QueryType.FILTER) {
         // Filter operation
         System.out.println("Performing Filter operation...");
-        // Implement filtering logic here
-      } else if (qs.getQueryType() == QueryType.RANGE) {
+
+        if (qs.getUseIndex()) {
+          System.out.println("Using index for filter query...");
+        }
+        else {
+          // **File Scan with Range Condition**
+          CondExpr[] rangeCond = new CondExpr[2]; // For single condition, CondExpr[2] is usually enough, last one is null
+          rangeCond[0] = new CondExpr();
+          rangeCond[0].op = new AttrOperator(AttrOperator.aopEQ); // Less than or equal to range
+          rangeCond[0].type1 = new AttrType(AttrType.attrSymbol);
+          rangeCond[0].type2 = new AttrType(AttrType.attrVector100D);
+          rangeCond[0].operand1.symbol = new FldSpec(
+                  new RelSpec(RelSpec.outer),
+                  qs.getQueryField()
+          );
+          rangeCond[0].operand2.vector100D = targetVector;
+          rangeCond[0].distance = 0;
+          rangeCond[1] = null; // Terminator
+
+          FileScan fileScan = new FileScan(
+                  relName1,
+                  attrTypes,
+                  Ssizes,
+                  (short) attrTypes.length,
+                  outAttrTypes,
+                  qs.getOutputFields().length,
+                  projlist,
+                  rangeCond
+          ); // Apply condition during scan
+
+          Tuple resultTuple;
+          while ((resultTuple = fileScan.get_next()) != null) {
+            resultTuple.print(attrTypes);
+          }
+          fileScan.close();
+        }
+      }
+      else if (qs.getQueryType() == QueryType.RANGE) {
         // Range operation
-        range_query(
-                relName1,
-                attrTypes,
-                outAttrTypes,
-                Ssizes,
-                qs,
-                projlist,
-                targetVector
-        );
-      } else if (qs.getQueryType() == QueryType.NN) {
+        System.out.println("Performing Range operation...");
+
+        if (qs.getUseIndex()) {
+          System.out.println("Using index for range query...");
+        }
+        else {
+          System.out.println("Not using index for range query...");
+
+          // **File Scan with Range Condition**
+          CondExpr[] rangeCond = new CondExpr[2]; // For single condition, CondExpr[2] is usually enough, last one is null
+          rangeCond[0] = new CondExpr();
+          rangeCond[0].op = new AttrOperator(AttrOperator.aopLE); // Less than or equal to range
+          rangeCond[0].type1 = new AttrType(AttrType.attrSymbol);
+          rangeCond[0].type2 = new AttrType(AttrType.attrVector100D);
+          rangeCond[0].operand1.symbol = new FldSpec(
+                  new RelSpec(RelSpec.outer),
+                  qs.getQueryField()
+          );
+          rangeCond[0].operand2.vector100D = targetVector;
+          rangeCond[0].distance = qs.getThreshold(); // Set target vector for distance calculation
+          rangeCond[1] = null; // Terminator
+
+          FileScan fileScan = new FileScan(
+                  relName1,
+                  attrTypes,
+                  Ssizes,
+                  (short) attrTypes.length,
+                  outAttrTypes,
+                  qs.getOutputFields().length,
+                  projlist,
+                  rangeCond
+          ); // Apply condition during scan
+
+          Tuple resultTuple;
+          while ((resultTuple = fileScan.get_next()) != null) {
+            resultTuple.print(attrTypes);
+          }
+          fileScan.close();
+        }
+      }
+      else if (qs.getQueryType() == QueryType.NN) {
         // Nearest Neighbor operation
-        nn_query(
-                relName1,
-                attrTypes,
-                outAttrTypes,
-                Ssizes,
-                targetVector,
-                qs,
-                projlist
-        );
-      } else {
-        throw new IllegalArgumentException(
-                "Unknown query type: " + qs.getQueryType()
-        );
+        if (qs.getUseIndex()) {
+          System.out.println("Using index for NN query...");
+        } else {
+          System.out.println("Using file scan for NN query...");
+          // **File Scan and Sort for NN (using Sort iterator)**
+          TupleOrder[] order = new TupleOrder[2];
+          order[0] = new TupleOrder(TupleOrder.Ascending);
+          order[1] = new TupleOrder(TupleOrder.Descending);
+
+          FileScan fileScan = new FileScan(
+                  relName1,
+                  attrTypes,
+                  Ssizes,
+                  (short) attrTypes.length,
+                  outAttrTypes,
+                  qs.getOutputFields().length,
+                  projlist,
+                  null
+          );
+
+          Sort sortIterator = new Sort(
+                  outAttrTypes,
+                  (short) outAttrTypes.length,
+                  Ssizes,
+                  fileScan,
+                  qs.getQueryField(),
+                  order[0],
+                  32,
+                  500,
+                  targetVector,
+                  qs.getThreshold()
+          );
+
+          Tuple resultTuple;
+          System.out.println("Result Tuple:");
+          while ((resultTuple = sortIterator.get_next()) != null) {
+            resultTuple.print(outAttrTypes);
+          }
+          sortIterator.close();
+          fileScan.close();
+        }
       }
 
       System.out.println("Page reads: " + PCounter.rcounter);
@@ -108,164 +235,6 @@ public class query2 {
     }
   }
 
-  private static void sort_query(
-          String relName1,
-          AttrType[] attrTypes,
-          AttrType[] outAttrTypes,
-          short[] Ssizes,
-          Vector100Dtype targetVector,
-          QuerySpec qs,
-          FldSpec[] projlist
-  ) throws Exception {
-    System.out.println("Performing Sort operation...");
-    TupleOrder[] order = new TupleOrder[2];
-    order[0] = new TupleOrder(TupleOrder.Ascending);
-    order[1] = new TupleOrder(TupleOrder.Descending);
-
-    // print outputAttrTypes
-    //    for (int i = 0; i < outAttrTypes.length; i++) {
-    //      System.out.println(outAttrTypes[i]);
-    //    }
-
-    FileScan fileScan = new FileScan(
-            relName1,
-            attrTypes,
-            Ssizes,
-            (short) attrTypes.length,
-            outAttrTypes,
-            qs.getOutputFields().length,
-            projlist,
-            null
-    );
-
-    Sort sortIterator = new Sort(
-            outAttrTypes,
-            (short) outAttrTypes.length,
-            Ssizes,
-            fileScan,
-            qs.getQueryField(),
-            order[0],
-            32,
-            500,
-            targetVector,
-            qs.getThreshold()
-    );
-
-    Tuple resultTuple;
-    System.out.println("Result Tuple:");
-    while ((resultTuple = sortIterator.get_next()) != null) {
-      resultTuple.print(outAttrTypes);
-    }
-    sortIterator.close();
-    fileScan.close();
-  }
-
-  private static void range_query(
-          String relName1,
-          AttrType[] attrTypes,
-          AttrType[] outAttrTypes,
-          short[] Ssizes,
-          QuerySpec qs,
-          FldSpec[] projlist,
-          Vector100Dtype targetVector
-  ) throws Exception {
-    System.out.println("Performing Range operation...");
-
-    if (qs.getUseIndex()) {
-      // Implement index-based range query here
-      System.out.println("Using index for range query...");
-    } else {
-      System.out.println("Not using index for range query...");
-
-      // **File Scan with Range Condition**
-      CondExpr[] rangeCond = new CondExpr[2]; // For single condition, CondExpr[2] is usually enough, last one is null
-      rangeCond[0] = new CondExpr();
-      rangeCond[0].op = new AttrOperator(AttrOperator.aopLE); // Less than or equal to range
-      rangeCond[0].type1 = new AttrType(AttrType.attrSymbol);
-      rangeCond[0].type2 = new AttrType(AttrType.attrVector100D);
-      rangeCond[0].operand1.symbol = new FldSpec(
-              new RelSpec(RelSpec.outer),
-              qs.getQueryField()
-      );
-      rangeCond[0].operand2.vector100D = targetVector;
-      rangeCond[0].distance = qs.getThreshold(); // Set target vector for distance calculation
-      rangeCond[1] = null; // Terminator
-
-      FileScan fileScan = new FileScan(
-              relName1,
-              attrTypes,
-              Ssizes,
-              (short) attrTypes.length,
-              outAttrTypes,
-              qs.getOutputFields().length,
-              projlist,
-              rangeCond
-      ); // Apply condition during scan
-
-      Tuple resultTuple;
-      while ((resultTuple = fileScan.get_next()) != null) {
-        resultTuple.print(attrTypes);
-      }
-      fileScan.close();
-    }
-  }
-
-  private static void nn_query(
-          String relName1,
-          AttrType[] attrTypes,
-          AttrType[] outAttrTypes,
-          short[] Ssizes,
-          Vector100Dtype targetVector,
-          QuerySpec qs,
-          FldSpec[] projlist
-  ) throws Exception {
-    if (qs.getUseIndex()) {
-      System.out.println("Using index for NN query...");
-    } else {
-      System.out.println("Using file scan for NN query...");
-      // **File Scan and Sort for NN (using Sort iterator)**
-      TupleOrder[] order = new TupleOrder[2];
-      order[0] = new TupleOrder(TupleOrder.Ascending);
-      order[1] = new TupleOrder(TupleOrder.Descending);
-
-      // print outputAttrTypes
-      //    for (int i = 0; i < outAttrTypes.length; i++) {
-      //      System.out.println(outAttrTypes[i].attrType);
-      //    }
-
-      FileScan fileScan = new FileScan(
-              relName1,
-              attrTypes,
-              Ssizes,
-              (short) attrTypes.length,
-              outAttrTypes,
-              qs.getOutputFields().length,
-              projlist,
-              null
-      );
-
-      Sort sortIterator = new Sort(
-              outAttrTypes,
-              (short) outAttrTypes.length,
-              Ssizes,
-              fileScan,
-              qs.getQueryField(),
-              order[0],
-              32,
-              500,
-              targetVector,
-              qs.getThreshold()
-      );
-
-      Tuple resultTuple;
-      System.out.println("Result Tuple:");
-      while ((resultTuple = sortIterator.get_next()) != null) {
-        resultTuple.print(outAttrTypes);
-      }
-      sortIterator.close();
-      fileScan.close();
-    }
-  }
 
   public static AttrType[] get_attrTypes(
           String attrTypeFile,
@@ -324,31 +293,32 @@ public class query2 {
     return attrTypes;
   }
 
-  private static QuerySpec parseQuerySpec(String qsName) throws IOException {
+  private static QuerySpec[] parseQuerySpec(String qsName) throws IOException {
     BufferedReader br = new BufferedReader(new FileReader(qsName));
     String line = br.readLine().trim();
-    br.close();
 
-    QuerySpec qs = new QuerySpec();
+    QuerySpec[] qs = new QuerySpec[2];
+    qs[0] = new QuerySpec();
+    qs[1] = new QuerySpec();
 
     if (line.startsWith("Sort(")) {
-      qs.setQueryType(QueryType.SORT);
+      qs[0].setQueryType(QueryType.SORT);
       String inside = line.substring("Sort(".length(), line.length() - 1);
       String[] tokens = inside.split(",");
       for (int i = 0; i < tokens.length; i++) {
         tokens[i] = tokens[i].trim();
       }
-      qs.setQueryField(Integer.parseInt(tokens[0])); // QA
-      qs.setTargetFileName(tokens[1]); // T: target vector file name
-      qs.setThreshold(Integer.parseInt(tokens[2])); // K
+      qs[0].setQueryField(Integer.parseInt(tokens[0])); // QA
+      qs[0].setTargetFileName(tokens[1]); // T: target vector file name
+      qs[0].setThreshold(Integer.parseInt(tokens[2])); // K
       int numOut = tokens.length - 3;
       int[] outFields = new int[numOut];
       for (int i = 0; i < numOut; i++) {
         outFields[i] = Integer.parseInt(tokens[i + 3]);
       }
-      qs.setOutputFields(outFields);
+      qs[0].setOutputFields(outFields);
     } else if (line.startsWith("Filter(")) {
-      qs.setQueryType(QueryType.FILTER);
+      qs[0].setQueryType(QueryType.FILTER);
       String inside = line.substring(
               "Filter(".length(),
               line.length() - 1
@@ -357,11 +327,17 @@ public class query2 {
       for (int i = 0; i < tokens.length; i++) {
         tokens[i] = tokens[i].trim();
       }
-      qs.setQueryField(Integer.parseInt(tokens[0])); // QA
-      qs.setTargetFileName(tokens[1]); // T: target vector file name
-      qs.setThreshold(Integer.parseInt(tokens[2])); // D: distance threshold
+      qs[0].setQueryField(Integer.parseInt(tokens[0])); // QA
+      qs[0].setTargetFileName(tokens[1]); // T: target vector file name
+      qs[0].setUseIndex(tokens[2] == "Y"); // Use index or not
+      int numOut = tokens.length - 3;
+      int[] outFields = new int[numOut];
+      for (int i = 0; i < numOut; i++) {
+        outFields[i] = Integer.parseInt(tokens[i + 3]);
+      }
+      qs[0].setOutputFields(outFields);
     } else if (line.startsWith("Range(")) {
-      qs.setQueryType(QueryType.RANGE);
+      qs[0].setQueryType(QueryType.RANGE);
       String inside = line.substring(
               "Range(".length(),
               line.length() - 1
@@ -370,38 +346,119 @@ public class query2 {
       for (int i = 0; i < tokens.length; i++) {
         tokens[i] = tokens[i].trim();
       }
-      qs.setQueryField(Integer.parseInt(tokens[0])); // QA
-      qs.setTargetFileName(tokens[1]); // T: target vector file name
-      qs.setThreshold(Integer.parseInt(tokens[2])); // D: distance threshold
-      qs.setUseIndex(tokens[3] == "Y"); // Use index or not
+      qs[0].setQueryField(Integer.parseInt(tokens[0])); // QA
+      qs[0].setTargetFileName(tokens[1]); // T: target vector file name
+      qs[0].setThreshold(Integer.parseInt(tokens[2])); // D: distance threshold
+      qs[0].setUseIndex(tokens[3] == "Y"); // Use index or not
       int numOut = tokens.length - 4;
       int[] outFields = new int[numOut];
       for (int i = 0; i < numOut; i++) {
         outFields[i] = Integer.parseInt(tokens[i + 4]);
       }
-      qs.setOutputFields(outFields);
+      qs[0].setOutputFields(outFields);
     } else if (line.startsWith("NN(")) {
-      qs.setQueryType(QueryType.NN);
+      qs[0].setQueryType(QueryType.NN);
       String inside = line.substring("NN(".length(), line.length() - 1);
       String[] tokens = inside.split(",");
       for (int i = 0; i < tokens.length; i++) {
         tokens[i] = tokens[i].trim();
       }
-      qs.setQueryField(Integer.parseInt(tokens[0])); // QA
-      qs.setTargetFileName(tokens[1]); // T: target vector file name
-      qs.setThreshold(Integer.parseInt(tokens[2])); // K: number of nearest neighbors
-      qs.setUseIndex(tokens[3] == "Y"); // Use index or not
+      qs[0].setQueryField(Integer.parseInt(tokens[0])); // QA
+      qs[0].setTargetFileName(tokens[1]); // T: target vector file name
+      qs[0].setThreshold(Integer.parseInt(tokens[2])); // K: number of nearest neighbors
+      qs[0].setUseIndex(tokens[3] == "Y"); // Use index or not
       int numOut = tokens.length - 4;
       int[] outFields = new int[numOut];
       for (int i = 0; i < numOut; i++) {
         outFields[i] = Integer.parseInt(tokens[i + 4]);
       }
-      qs.setOutputFields(outFields);
+      qs[0].setOutputFields(outFields);
+    } else if (line.startsWith("DJOIN(")) {
+      // We have 2 more lines to read
+      line = br.readLine().trim();
+      if (line.startsWith("Range(")) {
+        // First relation
+        qs[0].setQueryType(QueryType.RANGE);
+        String inside = line.substring("Range(".length(), line.length() - 2);
+        String[] tokens = inside.split(",");
+        for (int i = 0; i < tokens.length; i++) {
+          tokens[i] = tokens[i].trim();
+        }
+        qs[0].setQueryField(Integer.parseInt(tokens[0])); // QA
+        qs[0].setTargetFileName(tokens[1]); // T: target vector file name
+        qs[0].setThreshold(Integer.parseInt(tokens[2])); // D: distance threshold
+        qs[0].setUseIndex(tokens[3] == "Y"); // Use index or not
+        int numOut = tokens.length - 4;
+        int[] outFields = new int[numOut];
+        for (int i = 0; i < numOut; i++) {
+          outFields[i] = Integer.parseInt(tokens[i + 4]);
+        }
+        qs[0].setOutputFields(outFields);
+
+        // Second relation
+        line = br.readLine().trim();
+        qs[1].setQueryType(QueryType.RANGE);
+        inside = line.substring(0, line.length() - 2);
+        tokens = inside.split(",");
+        for (int i = 0; i < tokens.length; i++) {
+          tokens[i] = tokens[i].trim();
+        }
+        qs[1].setQueryField(Integer.parseInt(tokens[0])); // QA
+        qs[1].setThreshold(Integer.parseInt(tokens[1])); // D: distance threshold
+        qs[1].setUseIndex(tokens[2] == "Y"); // Use index or not
+        numOut = tokens.length - 3;
+        outFields = new int[numOut];
+        for (int i = 0; i < numOut; i++) {
+          outFields[i] = Integer.parseInt(tokens[i + 3]);
+        }
+        qs[1].setOutputFields(outFields);
+
+      } else if (line.startsWith("NN(")) {
+        qs[0].setQueryType(QueryType.NN);
+        String inside = line.substring("NN(".length(), line.length() - 2);
+        String[] tokens = inside.split(",");
+        for (int i = 0; i < tokens.length; i++) {
+          tokens[i] = tokens[i].trim();
+        }
+        qs[0].setQueryField(Integer.parseInt(tokens[0])); // QA
+        qs[0].setTargetFileName(tokens[1]); // T: target vector file name
+        qs[0].setThreshold(Integer.parseInt(tokens[2])); // K: number of nearest neighbors
+        qs[0].setUseIndex(tokens[3] == "Y"); // Use index or not
+        int numOut = tokens.length - 4;
+        int[] outFields = new int[numOut];
+        for (int i = 0; i < numOut; i++) {
+          outFields[i] = Integer.parseInt(tokens[i + 4]);
+        }
+
+        // Second relation
+        line = br.readLine().trim();
+        qs[1].setQueryType(QueryType.NN);
+        inside = line.substring(0, line.length() - 2);
+        tokens = inside.split(",");
+        for (int i = 0; i < tokens.length; i++) {
+          tokens[i] = tokens[i].trim();
+        }
+        qs[1].setQueryField(Integer.parseInt(tokens[0])); // QA
+        qs[1].setThreshold(Integer.parseInt(tokens[1])); // K: number of nearest neighbors
+        qs[1].setUseIndex(tokens[2] == "Y"); // Use index or not
+        numOut = tokens.length - 3;
+        outFields = new int[numOut];
+        for (int i = 0; i < numOut; i++) {
+          outFields[i] = Integer.parseInt(tokens[i + 3]);
+        }
+        qs[1].setOutputFields(outFields);
+
+      } else {
+        throw new IllegalArgumentException(
+                "Invalid query specification format: " + line
+        );
+      }
     } else {
       throw new IllegalArgumentException(
               "Invalid query specification format: " + line
       );
     }
+    br.readLine();
 
     return qs;
   }
