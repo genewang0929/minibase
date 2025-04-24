@@ -43,11 +43,17 @@ public class query2 {
       Heapfile heapFile1 = new Heapfile(relName1);
       Heapfile heapFile2 = new Heapfile(relName2);
 
-      AttrType[] attrTypes = null;
+      AttrType[] attrTypes1 = null;
+      AttrType[] attrTypes2 = null;
       short[] Ssizes = new short[1];
       Ssizes[0] = 30;
-      String attrTypeFile = "./schemas/" + relName1 + ".schema";
-      attrTypes = get_attrTypes(attrTypeFile, attrTypes);
+      short[] Rsizes = new short[1];
+      Rsizes[0] = 15;
+
+      String attrTypeFile1 = "./schemas/" + relName1 + ".schema";
+      String attrTypeFile2 = "./schemas/" + relName2 + ".schema";
+      attrTypes1 = get_attrTypes(attrTypeFile1, attrTypes1);
+      attrTypes2 = get_attrTypes(attrTypeFile2, attrTypes2);
 
       FldSpec[] projlist = new FldSpec[qs.getOutputFields().length];
       RelSpec rel = new RelSpec(RelSpec.outer);
@@ -58,19 +64,138 @@ public class query2 {
       // Get output fields attributes types
       AttrType[] outAttrTypes = new AttrType[qs.getOutputFields().length];
       for (int i = 0; i < qs.getOutputFields().length; i++) {
-        outAttrTypes[i] = attrTypes[qs.getOutputFields()[i] - 1];
+        outAttrTypes[i] = attrTypes1[qs.getOutputFields()[i] - 1];
       }
 
       if (qs2.getQueryType() != null) {
         // DJOIN operation
+        if (qs2.getQueryType() == QueryType.RANGE) {
+          // Range operation
+          System.out.println("Performing DJOIN with RANGE operation...");
+          if (qs2.getUseIndex()) {
+            System.out.println("Using index for DJOIN query...");
+          }
+          else {
+            // Two FileScans: 1. Range query on first relation 2. Range query on second relation
+            CondExpr[] outFilter1 = new CondExpr[2];
+            outFilter1[0] = new CondExpr();
+            outFilter1[0].next = null;
+            outFilter1[0].op = new AttrOperator(AttrOperator.aopLE);
+            outFilter1[0].type1 = new AttrType(AttrType.attrSymbol);
+            outFilter1[0].type2 = new AttrType(AttrType.attrVector100D);
+            outFilter1[0].operand1.symbol = new FldSpec(
+                    new RelSpec(RelSpec.outer),
+                    qs.getQueryField()
+            );
+            outFilter1[0].operand2.vector100D = targetVector;
+            outFilter1[0].distance = qs.getThreshold();
+            outFilter1[1] = null;
+
+            CondExpr[] outFilter2 = new CondExpr[2];
+            outFilter2[0] = new CondExpr();
+            outFilter2[0].next = null;
+            outFilter2[0].op = new AttrOperator(AttrOperator.aopLE);
+            outFilter2[0].type1 = new AttrType(AttrType.attrSymbol);
+            outFilter2[0].type2 = new AttrType(AttrType.attrSymbol);
+            outFilter2[0].operand1.symbol = new FldSpec(  // the first relation is outer
+                    new RelSpec(RelSpec.outer),
+                    qs.getQueryField()
+            );
+            outFilter2[0].operand2.symbol = new FldSpec(  // the second relation is inner
+                    new RelSpec(RelSpec.innerRel),
+                    qs2.getQueryField()
+            );
+            outFilter2[0].distance = qs2.getThreshold();
+            outFilter2[1] = null;
+
+            // project of the first relation
+            FldSpec[] proj_rel1 = new FldSpec[attrTypes1.length];
+            for (int i = 0; i < attrTypes1.length; i++) {
+              proj_rel1[i] = new FldSpec(
+                      new RelSpec(RelSpec.outer),
+                      i + 1
+              );
+            }
+
+            // project of the joined output relation (first + second)
+            FldSpec[] proj_join = new FldSpec[qs.getOutputFields().length + qs2.getOutputFields().length];
+            for (int i = 0; i < qs.getOutputFields().length; i++) {
+              proj_join[i] = new FldSpec(
+                      new RelSpec(RelSpec.outer),
+                      qs.getOutputFields()[i]
+              );
+            }
+            for (int i = 0; i < qs2.getOutputFields().length; i++) {
+              proj_join[i + qs.getOutputFields().length] = new FldSpec(
+                      new RelSpec(RelSpec.innerRel),
+                      qs2.getOutputFields()[i]
+              );
+            }
+
+            AttrType[] joinAttrTypes = new AttrType[qs.getOutputFields().length + qs2.getOutputFields().length];
+            for (int i = 0; i < qs.getOutputFields().length; i++) {
+              joinAttrTypes[i] = attrTypes1[qs.getOutputFields()[i] - 1];
+            }
+            for (int i = 0; i < qs2.getOutputFields().length; i++) {
+              joinAttrTypes[i + qs.getOutputFields().length] = attrTypes2[qs2.getOutputFields()[i] - 1];
+            }
+
+            FileScan am = null;
+            try {
+              am = new FileScan(
+                      relName1,
+                      attrTypes1,
+                      Ssizes,
+                      (short) attrTypes1.length,
+                      attrTypes1,
+                      attrTypes1.length,
+                      proj_rel1,
+                      outFilter1
+              ); // Apply condition during scan
+            } catch (Exception e) {
+              e.printStackTrace();
+            }
+
+            NestedLoopsJoins inl = null;
+            try {
+              inl = new NestedLoopsJoins(attrTypes1, attrTypes1.length, Ssizes,
+                      attrTypes2, attrTypes2.length, Rsizes,
+                      10,
+                      am, relName2,
+                      outFilter2, null, proj_join, joinAttrTypes.length);
+            } catch (Exception e) {
+              System.err.println("*** Error preparing for nested_loop_join");
+              System.err.println("" + e);
+              e.printStackTrace();
+              Runtime.getRuntime().exit(1);
+            }
+
+            Tuple resultTuple;
+            System.out.println("Result Tuple:");
+            while ((resultTuple = inl.get_next()) != null) {
+              resultTuple.print(joinAttrTypes);
+            }
+            inl.close();
+            am.close();
+          }
+        }
+        else if (qs2.getQueryType() == QueryType.NN) {
+          // Nearest Neighbor operation
+          System.out.println("Performing DJOIN with NN operation...");
+          if (qs2.getUseIndex()) {
+            System.out.println("Using index for DJOIN query...");
+          } else {
+            System.out.println("Not using index for DJOIN query...");
+          }
+        }
       }
       else if (qs.getQueryType() == QueryType.SORT) {
         // Sort operation
         FileScan fileScan = new FileScan(
                 relName1,
-                attrTypes,
+                attrTypes1,
                 Ssizes,
-                (short) attrTypes.length,
+                (short) attrTypes1.length,
                 outAttrTypes,
                 qs.getOutputFields().length,
                 projlist,
@@ -124,9 +249,9 @@ public class query2 {
 
           FileScan fileScan = new FileScan(
                   relName1,
-                  attrTypes,
+                  attrTypes1,
                   Ssizes,
-                  (short) attrTypes.length,
+                  (short) attrTypes1.length,
                   outAttrTypes,
                   qs.getOutputFields().length,
                   projlist,
@@ -135,7 +260,7 @@ public class query2 {
 
           Tuple resultTuple;
           while ((resultTuple = fileScan.get_next()) != null) {
-            resultTuple.print(attrTypes);
+            resultTuple.print(attrTypes1);
           }
           fileScan.close();
         }
@@ -166,9 +291,9 @@ public class query2 {
 
           FileScan fileScan = new FileScan(
                   relName1,
-                  attrTypes,
+                  attrTypes1,
                   Ssizes,
-                  (short) attrTypes.length,
+                  (short) attrTypes1.length,
                   outAttrTypes,
                   qs.getOutputFields().length,
                   projlist,
@@ -177,7 +302,7 @@ public class query2 {
 
           Tuple resultTuple;
           while ((resultTuple = fileScan.get_next()) != null) {
-            resultTuple.print(attrTypes);
+            resultTuple.print(attrTypes1);
           }
           fileScan.close();
         }
@@ -195,9 +320,9 @@ public class query2 {
 
           FileScan fileScan = new FileScan(
                   relName1,
-                  attrTypes,
+                  attrTypes1,
                   Ssizes,
-                  (short) attrTypes.length,
+                  (short) attrTypes1.length,
                   outAttrTypes,
                   qs.getOutputFields().length,
                   projlist,
