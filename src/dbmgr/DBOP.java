@@ -8,6 +8,8 @@ import heap.InvalidTupleSizeException;
 import heap.InvalidTypeException;
 import heap.Tuple;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 
@@ -111,6 +113,68 @@ public class DBOP {
     } catch (IOException e) {
       System.err.println("Error writing schema file: " + e.getMessage());
       System.exit(1);
+    }
+  }
+
+  public static AttrType getAttrTypeFromSchema(String heapFilename, int attrIndex) {
+    String schemaFileName = "./schemas/" + heapFilename + ".schema";
+
+    try (BufferedReader reader = new BufferedReader(new FileReader(schemaFileName))) {
+      int numAttrs = Integer.parseInt(reader.readLine().trim());
+
+      if (attrIndex < 0 || attrIndex >= numAttrs) {
+        throw new IndexOutOfBoundsException("Attribute index out of range");
+      }
+
+      String[] typeCodes = reader.readLine().trim().split(" ");
+      int code = Integer.parseInt(typeCodes[attrIndex]);
+
+      switch (code) {
+        case 1:
+          return new AttrType(AttrType.attrInteger);
+        case 2:
+          return new AttrType(AttrType.attrReal);
+        case 3:
+          return new AttrType(AttrType.attrString);
+        case 4:
+          return new AttrType(AttrType.attrVector100D);
+        default:
+          throw new IllegalArgumentException("Unknown attribute type code: " + code);
+      }
+    } catch (IOException e) {
+      System.err.println("Error reading schema file: " + e.getMessage());
+      System.exit(1);
+    }
+    return null; // Unreachable unless System.exit is removed
+  }
+
+  /** 
+   * Reads “./schemas/‹heapFilename›.schema” (as written by save_attrTypes)
+   * and returns an AttrType[] of length n, mapping 1→attrInteger,2→attrReal,3→attrString,4→attrVector100D.
+   */
+  public static AttrType[] loadAttrTypes(String heapFilename) {
+    String schemaFileName = "./schemas/" + heapFilename + ".schema";
+    try (BufferedReader reader = new BufferedReader(new FileReader(schemaFileName))) {
+      int numAttrs = Integer.parseInt(reader.readLine().trim());
+      String[] codes = reader.readLine().trim().split("\\s+");
+      if (codes.length != numAttrs)
+        throw new IOException("Schema file malformed");
+      AttrType[] types = new AttrType[numAttrs];
+      for (int i = 0; i < numAttrs; i++) {
+        int c = Integer.parseInt(codes[i]);
+        switch (c) {
+          case 1: types[i] = new AttrType(AttrType.attrInteger);    break;
+          case 2: types[i] = new AttrType(AttrType.attrReal);       break;
+          case 3: types[i] = new AttrType(AttrType.attrString);     break;
+          case 4: types[i] = new AttrType(AttrType.attrVector100D); break;
+          default: throw new IOException("Unknown type code "+c);
+        }
+      }
+      return types;
+    } catch (Exception e) {
+      System.err.println("Cannot read schema for "+heapFilename+": "+e);
+      System.exit(1);
+      return null; // unreachable
     }
   }
 }
