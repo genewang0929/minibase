@@ -20,9 +20,8 @@ public class createindex {
 
     try {
       // initialize Minibase on existing DB
-      String dbpath = "/tmp/" + System.getProperty("user.name") + "." + relName;
-      String logpath = "/tmp/" + System.getProperty("user.name") + ".log";
-      SystemDefs sysdef = new SystemDefs(dbpath, 1000, 100, "Clock");
+      SystemDefs.MINIBASE_RESTART_FLAG = true;  // Use the existing DBMS
+      DBOP.open_databaseDBNAME("mydb", 1000, 1000);
 
       // reset I/O counters
       PCounter.initialize();
@@ -85,7 +84,7 @@ public class createindex {
           }
           btf.insert(key, rid);
         }
-        // scan.close();
+//         scan.close();
       }
 
       // flush and report I/O
