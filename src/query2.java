@@ -69,6 +69,39 @@ public class query2 {
 
       if (qs2.getQueryType() != null) {
         // DJOIN operation
+
+        // project of the first relation
+        FldSpec[] proj_rel1 = new FldSpec[attrTypes1.length];
+        for (int i = 0; i < attrTypes1.length; i++) {
+          proj_rel1[i] = new FldSpec(
+                  new RelSpec(RelSpec.outer),
+                  i + 1
+          );
+        }
+
+        // project of the joined output relation (first + second)
+        FldSpec[] proj_join = new FldSpec[qs.getOutputFields().length + qs2.getOutputFields().length];
+        for (int i = 0; i < qs.getOutputFields().length; i++) {
+          proj_join[i] = new FldSpec(
+                  new RelSpec(RelSpec.outer),
+                  qs.getOutputFields()[i]
+          );
+        }
+        for (int i = 0; i < qs2.getOutputFields().length; i++) {
+          proj_join[i + qs.getOutputFields().length] = new FldSpec(
+                  new RelSpec(RelSpec.innerRel),
+                  qs2.getOutputFields()[i]
+          );
+        }
+
+        AttrType[] joinAttrTypes = new AttrType[qs.getOutputFields().length + qs2.getOutputFields().length];
+        for (int i = 0; i < qs.getOutputFields().length; i++) {
+          joinAttrTypes[i] = attrTypes1[qs.getOutputFields()[i] - 1];
+        }
+        for (int i = 0; i < qs2.getOutputFields().length; i++) {
+          joinAttrTypes[i + qs.getOutputFields().length] = attrTypes2[qs2.getOutputFields()[i] - 1];
+        }
+
         if (qs2.getQueryType() == QueryType.RANGE) {
           // Range operation
           System.out.println("Performing DJOIN with RANGE operation...");
@@ -107,38 +140,6 @@ public class query2 {
             );
             outFilter2[0].distance = qs2.getThreshold();
             outFilter2[1] = null;
-
-            // project of the first relation
-            FldSpec[] proj_rel1 = new FldSpec[attrTypes1.length];
-            for (int i = 0; i < attrTypes1.length; i++) {
-              proj_rel1[i] = new FldSpec(
-                      new RelSpec(RelSpec.outer),
-                      i + 1
-              );
-            }
-
-            // project of the joined output relation (first + second)
-            FldSpec[] proj_join = new FldSpec[qs.getOutputFields().length + qs2.getOutputFields().length];
-            for (int i = 0; i < qs.getOutputFields().length; i++) {
-              proj_join[i] = new FldSpec(
-                      new RelSpec(RelSpec.outer),
-                      qs.getOutputFields()[i]
-              );
-            }
-            for (int i = 0; i < qs2.getOutputFields().length; i++) {
-              proj_join[i + qs.getOutputFields().length] = new FldSpec(
-                      new RelSpec(RelSpec.innerRel),
-                      qs2.getOutputFields()[i]
-              );
-            }
-
-            AttrType[] joinAttrTypes = new AttrType[qs.getOutputFields().length + qs2.getOutputFields().length];
-            for (int i = 0; i < qs.getOutputFields().length; i++) {
-              joinAttrTypes[i] = attrTypes1[qs.getOutputFields()[i] - 1];
-            }
-            for (int i = 0; i < qs2.getOutputFields().length; i++) {
-              joinAttrTypes[i + qs.getOutputFields().length] = attrTypes2[qs2.getOutputFields()[i] - 1];
-            }
 
             FileScan am = null;
             try {
@@ -186,6 +187,73 @@ public class query2 {
             System.out.println("Using index for DJOIN query...");
           } else {
             System.out.println("Not using index for DJOIN query...");
+            CondExpr[] outFilter = new CondExpr[2];
+            outFilter[0] = new CondExpr();
+            outFilter[0].next = null;
+            outFilter[0].op = new AttrOperator(AttrOperator.aopLE);
+            outFilter[0].type1 = new AttrType(AttrType.attrSymbol);
+            outFilter[0].type2 = new AttrType(AttrType.attrSymbol);
+            outFilter[0].operand1.symbol = new FldSpec(  // the first relation is outer
+                    new RelSpec(RelSpec.outer),
+                    qs.getQueryField()
+            );
+            outFilter[0].operand2.symbol = new FldSpec(  // the second relation is inner
+                    new RelSpec(RelSpec.innerRel),
+                    qs2.getQueryField()
+            );
+            outFilter[0].distance = qs2.getThreshold();
+            outFilter[1] = null;
+
+            TupleOrder[] order = new TupleOrder[2];
+            order[0] = new TupleOrder(TupleOrder.Ascending);
+            order[1] = new TupleOrder(TupleOrder.Descending);
+
+            FileScan am = new FileScan(
+                    relName1,
+                    attrTypes1,
+                    Ssizes,
+                    (short) attrTypes1.length,
+                    attrTypes1,
+                    attrTypes1.length,
+                    proj_rel1,
+                    null
+            );
+
+            Sort sortIterator = new Sort(
+                    attrTypes1,
+                    (short) attrTypes1.length,
+                    Ssizes,
+                    am,
+                    qs.getQueryField(),
+                    order[0],
+                    32,
+                    500,
+                    targetVector,
+                    qs.getThreshold()
+            );
+
+            NestedLoopsJoins inl = null;
+            try {
+              inl = new NestedLoopsJoins(attrTypes1, attrTypes1.length, Ssizes,
+                      attrTypes2, attrTypes2.length, Rsizes,
+                      10,
+                      sortIterator, relName2,
+                      outFilter, null, proj_join, joinAttrTypes.length);
+            } catch (Exception e) {
+              System.err.println("*** Error preparing for nested_loop_join");
+              System.err.println("" + e);
+              e.printStackTrace();
+              Runtime.getRuntime().exit(1);
+            }
+
+            Tuple resultTuple;
+            System.out.println("Result Tuple:");
+            while ((resultTuple = inl.get_next()) != null) {
+              resultTuple.print(joinAttrTypes);
+            }
+            inl.close();
+            sortIterator.close();
+            am.close();
           }
         }
       }
@@ -442,7 +510,8 @@ public class query2 {
         outFields[i] = Integer.parseInt(tokens[i + 3]);
       }
       qs[0].setOutputFields(outFields);
-    } else if (line.startsWith("Filter(")) {
+    }
+    else if (line.startsWith("Filter(")) {
       qs[0].setQueryType(QueryType.FILTER);
       String inside = line.substring(
               "Filter(".length(),
@@ -461,7 +530,8 @@ public class query2 {
         outFields[i] = Integer.parseInt(tokens[i + 3]);
       }
       qs[0].setOutputFields(outFields);
-    } else if (line.startsWith("Range(")) {
+    }
+    else if (line.startsWith("Range(")) {
       qs[0].setQueryType(QueryType.RANGE);
       String inside = line.substring(
               "Range(".length(),
@@ -481,7 +551,8 @@ public class query2 {
         outFields[i] = Integer.parseInt(tokens[i + 4]);
       }
       qs[0].setOutputFields(outFields);
-    } else if (line.startsWith("NN(")) {
+    }
+    else if (line.startsWith("NN(")) {
       qs[0].setQueryType(QueryType.NN);
       String inside = line.substring("NN(".length(), line.length() - 1);
       String[] tokens = inside.split(",");
@@ -498,7 +569,8 @@ public class query2 {
         outFields[i] = Integer.parseInt(tokens[i + 4]);
       }
       qs[0].setOutputFields(outFields);
-    } else if (line.startsWith("DJOIN(")) {
+    }
+    else if (line.startsWith("DJOIN(")) {
       // We have 2 more lines to read
       line = br.readLine().trim();
       if (line.startsWith("Range(")) {
@@ -538,7 +610,8 @@ public class query2 {
         }
         qs[1].setOutputFields(outFields);
 
-      } else if (line.startsWith("NN(")) {
+      }
+      else if (line.startsWith("NN(")) {
         qs[0].setQueryType(QueryType.NN);
         String inside = line.substring("NN(".length(), line.length() - 2);
         String[] tokens = inside.split(",");
@@ -554,6 +627,7 @@ public class query2 {
         for (int i = 0; i < numOut; i++) {
           outFields[i] = Integer.parseInt(tokens[i + 4]);
         }
+        qs[0].setOutputFields(outFields);
 
         // Second relation
         line = br.readLine().trim();
@@ -573,7 +647,8 @@ public class query2 {
         }
         qs[1].setOutputFields(outFields);
 
-      } else {
+      }
+      else {
         throw new IllegalArgumentException(
                 "Invalid query specification format: " + line
         );
