@@ -116,37 +116,6 @@ public class DBOP {
     }
   }
 
-  public static AttrType getAttrTypeFromSchema(String heapFilename, int attrIndex) {
-    String schemaFileName = "./schemas/" + heapFilename + ".schema";
-
-    try (BufferedReader reader = new BufferedReader(new FileReader(schemaFileName))) {
-      int numAttrs = Integer.parseInt(reader.readLine().trim());
-
-      if (attrIndex < 0 || attrIndex >= numAttrs) {
-        throw new IndexOutOfBoundsException("Attribute index out of range");
-      }
-
-      String[] typeCodes = reader.readLine().trim().split(" ");
-      int code = Integer.parseInt(typeCodes[attrIndex]);
-
-      switch (code) {
-        case 1:
-          return new AttrType(AttrType.attrInteger);
-        case 2:
-          return new AttrType(AttrType.attrReal);
-        case 3:
-          return new AttrType(AttrType.attrString);
-        case 4:
-          return new AttrType(AttrType.attrVector100D);
-        default:
-          throw new IllegalArgumentException("Unknown attribute type code: " + code);
-      }
-    } catch (IOException e) {
-      System.err.println("Error reading schema file: " + e.getMessage());
-      System.exit(1);
-    }
-    return null; // Unreachable unless System.exit is removed
-  }
 
   /** 
    * Reads “./schemas/‹heapFilename›.schema” (as written by save_attrTypes)

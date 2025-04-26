@@ -39,8 +39,8 @@ public class createindex {
       // open the heap file for this relation
       Heapfile hf = new Heapfile(relName);
 
-      // build the index‐file name
-      String idxName = relName + "_" + colNo + "_" + L + "_" + h;
+      // build the indexfile name
+      String idxName = relName + "_" + colNo;
 
       // decide vector vs scalar
       if (types[colNo-1].attrType == AttrType.attrVector100D) {
