@@ -5,10 +5,15 @@ import global.*;
 import heap.Heapfile;
 import heap.Tuple;
 import iterator.*;
+import lshfindex.LSHFFileScan;
+import lshfindex.LSHFIndexFile;
+import lshfindex.Vector100DKey;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+
+import static dbmgr.DBOP.loadAttrTypes;
 
 public class query2 {
 
@@ -50,10 +55,8 @@ public class query2 {
       short[] Rsizes = new short[1];
       Rsizes[0] = 15;
 
-      String attrTypeFile1 = "./schemas/" + relName1 + ".schema";
-      String attrTypeFile2 = "./schemas/" + relName2 + ".schema";
-      attrTypes1 = get_attrTypes(attrTypeFile1, attrTypes1);
-      attrTypes2 = get_attrTypes(attrTypeFile2, attrTypes2);
+      attrTypes1 = loadAttrTypes(relName1);
+      attrTypes2 = loadAttrTypes(relName2);
 
       FldSpec[] projlist = new FldSpec[qs.getOutputFields().length];
       RelSpec rel = new RelSpec(RelSpec.outer);
@@ -66,6 +69,13 @@ public class query2 {
       for (int i = 0; i < qs.getOutputFields().length; i++) {
         outAttrTypes[i] = attrTypes1[qs.getOutputFields()[i] - 1];
       }
+
+      // initialize the index file
+      String indexFileName = relName1 + "_" + qs.getQueryField();
+      LSHFIndexFile lshf = new LSHFIndexFile(indexFileName);
+      LSHFFileScan scan = new LSHFFileScan(lshf, heapFile1, targetVector);
+      String keyStr = lshf.computeHash(targetVector, 0, lshf.getH());
+      Vector100DKey key = new Vector100DKey(keyStr);
 
       if (qs2.getQueryType() != null) {
         // DJOIN operation
@@ -339,6 +349,18 @@ public class query2 {
 
         if (qs.getUseIndex()) {
           System.out.println("Using index for range query...");
+          Tuple[] results = scan.LSHFFileRangeScan(key, qs.getThreshold(), attrTypes1, qs.getQueryField());
+          System.out.println("Result Tuple:");
+          for (Tuple tuple1 : results) {
+            // project the output tuple
+            Tuple Jtuple = new Tuple();
+            AttrType[] Jtypes = new AttrType[outAttrTypes.length];
+            TupleUtils.setup_op_tuple(Jtuple, Jtypes, attrTypes1, attrTypes1.length, outAttrTypes, Ssizes, projlist, outAttrTypes.length);
+            tuple1.setHdr((short) attrTypes1.length, attrTypes1, Ssizes);
+            Projection.Project(tuple1, outAttrTypes, Jtuple, projlist, outAttrTypes.length);
+
+            Jtuple.print(attrTypes1);
+          }
         }
         else {
           System.out.println("Not using index for range query...");
@@ -379,6 +401,19 @@ public class query2 {
         // Nearest Neighbor operation
         if (qs.getUseIndex()) {
           System.out.println("Using index for NN query...");
+
+          Tuple[] results = scan.LSHFFileNNScan(key, qs.getThreshold(), attrTypes1, qs.getQueryField());
+          System.out.println("Result Tuple:");
+          for (Tuple tuple1 : results) {
+            // project the output tuple
+            Tuple Jtuple = new Tuple();
+            AttrType[] Jtypes = new AttrType[outAttrTypes.length];
+            TupleUtils.setup_op_tuple(Jtuple, Jtypes, attrTypes1, attrTypes1.length, outAttrTypes, Ssizes, projlist, outAttrTypes.length);
+            tuple1.setHdr((short) attrTypes1.length, attrTypes1, Ssizes);
+            Projection.Project(tuple1, outAttrTypes, Jtuple, projlist, outAttrTypes.length);
+
+            Jtuple.print(attrTypes1);
+          }
         } else {
           System.out.println("Using file scan for NN query...");
           // **File Scan and Sort for NN (using Sort iterator)**
@@ -428,64 +463,6 @@ public class query2 {
     }
   }
 
-
-  public static AttrType[] get_attrTypes(
-          String attrTypeFile,
-          AttrType[] attrTypes
-  ) {
-    try (
-            BufferedReader schemaReader = new BufferedReader(
-                    new FileReader(attrTypeFile)
-            )
-    ) {
-      String line = schemaReader.readLine();
-      if (line == null) {
-        throw new IOException("Schema file is empty or corrupted.");
-      }
-      int numAttributes = Integer.parseInt(line.trim());
-      attrTypes = new AttrType[numAttributes];
-
-      line = schemaReader.readLine();
-      if (line == null) {
-        throw new IOException("Schema file is incomplete.");
-      }
-      String[] typeStrings = line.trim().split("\\s+");
-      if (typeStrings.length != numAttributes) {
-        throw new IOException(
-                "Schema file attribute type count mismatch."
-        );
-      }
-
-      for (int i = 0; i < numAttributes; i++) {
-        int typeCode = Integer.parseInt(typeStrings[i]);
-        switch (typeCode) {
-          case 1:
-            attrTypes[i] = new AttrType(AttrType.attrInteger);
-            break;
-          case 2:
-            attrTypes[i] = new AttrType(AttrType.attrReal);
-            break;
-          case 3:
-            attrTypes[i] = new AttrType(AttrType.attrString);
-            break;
-          case 4:
-            attrTypes[i] = new AttrType(AttrType.attrVector100D);
-            break;
-          default:
-            throw new IOException(
-                    "Unknown attribute type code in schema file: " +
-                            typeCode
-            );
-        }
-      }
-      System.out.println("Attribute types read from schema file.");
-    } catch (IOException e) {
-      System.err.println("Error reading schema file: " + e.getMessage());
-      System.exit(1); // Or handle error appropriately
-    }
-    return attrTypes;
-  }
-
   private static QuerySpec[] parseQuerySpec(String qsName) throws IOException {
     BufferedReader br = new BufferedReader(new FileReader(qsName));
     String line = br.readLine().trim();
@@ -523,7 +500,7 @@ public class query2 {
       }
       qs[0].setQueryField(Integer.parseInt(tokens[0])); // QA
       qs[0].setTargetFileName(tokens[1]); // T: target vector file name
-      qs[0].setUseIndex(tokens[2] == "Y"); // Use index or not
+      qs[0].setUseIndex(tokens[2].equals("Y")); // Use index or not
       int numOut = tokens.length - 3;
       int[] outFields = new int[numOut];
       for (int i = 0; i < numOut; i++) {
@@ -544,7 +521,7 @@ public class query2 {
       qs[0].setQueryField(Integer.parseInt(tokens[0])); // QA
       qs[0].setTargetFileName(tokens[1]); // T: target vector file name
       qs[0].setThreshold(Integer.parseInt(tokens[2])); // D: distance threshold
-      qs[0].setUseIndex(tokens[3] == "Y"); // Use index or not
+      qs[0].setUseIndex(tokens[3].equals("Y")); // Use index or not
       int numOut = tokens.length - 4;
       int[] outFields = new int[numOut];
       for (int i = 0; i < numOut; i++) {
@@ -562,7 +539,7 @@ public class query2 {
       qs[0].setQueryField(Integer.parseInt(tokens[0])); // QA
       qs[0].setTargetFileName(tokens[1]); // T: target vector file name
       qs[0].setThreshold(Integer.parseInt(tokens[2])); // K: number of nearest neighbors
-      qs[0].setUseIndex(tokens[3] == "Y"); // Use index or not
+      qs[0].setUseIndex(tokens[3].equals("Y")); // Use index or not
       int numOut = tokens.length - 4;
       int[] outFields = new int[numOut];
       for (int i = 0; i < numOut; i++) {
@@ -584,7 +561,7 @@ public class query2 {
         qs[0].setQueryField(Integer.parseInt(tokens[0])); // QA
         qs[0].setTargetFileName(tokens[1]); // T: target vector file name
         qs[0].setThreshold(Integer.parseInt(tokens[2])); // D: distance threshold
-        qs[0].setUseIndex(tokens[3] == "Y"); // Use index or not
+        qs[0].setUseIndex(tokens[3].equals("Y")); // Use index or not
         int numOut = tokens.length - 4;
         int[] outFields = new int[numOut];
         for (int i = 0; i < numOut; i++) {
@@ -602,7 +579,7 @@ public class query2 {
         }
         qs[1].setQueryField(Integer.parseInt(tokens[0])); // QA
         qs[1].setThreshold(Integer.parseInt(tokens[1])); // D: distance threshold
-        qs[1].setUseIndex(tokens[2] == "Y"); // Use index or not
+        qs[1].setUseIndex(tokens[2].equals("Y")); // Use index or not
         numOut = tokens.length - 3;
         outFields = new int[numOut];
         for (int i = 0; i < numOut; i++) {
@@ -621,7 +598,7 @@ public class query2 {
         qs[0].setQueryField(Integer.parseInt(tokens[0])); // QA
         qs[0].setTargetFileName(tokens[1]); // T: target vector file name
         qs[0].setThreshold(Integer.parseInt(tokens[2])); // K: number of nearest neighbors
-        qs[0].setUseIndex(tokens[3] == "Y"); // Use index or not
+        qs[0].setUseIndex(tokens[3].equals("Y")); // Use index or not
         int numOut = tokens.length - 4;
         int[] outFields = new int[numOut];
         for (int i = 0; i < numOut; i++) {
@@ -639,7 +616,7 @@ public class query2 {
         }
         qs[1].setQueryField(Integer.parseInt(tokens[0])); // QA
         qs[1].setThreshold(Integer.parseInt(tokens[1])); // K: number of nearest neighbors
-        qs[1].setUseIndex(tokens[2] == "Y"); // Use index or not
+        qs[1].setUseIndex(tokens[2].equals("Y")); // Use index or not
         numOut = tokens.length - 3;
         outFields = new int[numOut];
         for (int i = 0; i < numOut; i++) {
@@ -682,81 +659,5 @@ public class query2 {
       vector[i] = Short.parseShort(tokens[i]);
     }
     return new Vector100Dtype(vector);
-  }
-}
-
-/**
- * Enum to represent the type of query being executed.
- * RANGE: Range query based on a distance threshold.
- * NN: Nearest Neighbor query to find K nearest neighbors.
- */
-enum QueryType {
-  SORT,
-  FILTER,
-  RANGE,
-  NN,
-}
-
-/**
- * Class to encapsulate the query specification.
- * It contains fields for the query type, query field, target vector file name,
- * threshold (distance or number of neighbors), and output fields.
- */
-
-class QuerySpec {
-
-  private QueryType queryType;
-  private int queryField; // Field number for the 100D-vector attribute.
-  private String targetFileName; // Name of the file containing the target vector.
-  private int threshold; // For Range: the distance D; for NN: the number K.
-  private boolean useIndex; // Whether to use index or not.
-  private int[] outputFields; // Field numbers to output.
-
-  public QueryType getQueryType() {
-    return queryType;
-  }
-
-  public void setQueryType(QueryType queryType) {
-    this.queryType = queryType;
-  }
-
-  public int getQueryField() {
-    return queryField;
-  }
-
-  public void setQueryField(int queryField) {
-    this.queryField = queryField;
-  }
-
-  public String getTargetFileName() {
-    return targetFileName;
-  }
-
-  public void setTargetFileName(String targetFileName) {
-    this.targetFileName = targetFileName;
-  }
-
-  public int getThreshold() {
-    return threshold;
-  }
-
-  public void setThreshold(int threshold) {
-    this.threshold = threshold;
-  }
-
-  public void setUseIndex(boolean useIndex) {
-    this.useIndex = useIndex;
-  }
-
-  public boolean getUseIndex() {
-    return useIndex;
-  }
-
-  public int[] getOutputFields() {
-    return outputFields;
-  }
-
-  public void setOutputFields(int[] outputFields) {
-    this.outputFields = outputFields;
   }
 }
