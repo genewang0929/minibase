@@ -70,13 +70,6 @@ public class query2 {
         outAttrTypes[i] = attrTypes1[qs.getOutputFields()[i] - 1];
       }
 
-      // initialize the index file
-      String indexFileName = relName1 + "_" + qs.getQueryField();
-      LSHFIndexFile lshf = new LSHFIndexFile(indexFileName);
-      LSHFFileScan scan = new LSHFFileScan(lshf, heapFile1, targetVector);
-      String keyStr = lshf.computeHash(targetVector, 0, lshf.getH());
-      Vector100DKey key = new Vector100DKey(keyStr);
-
       if (qs2.getQueryType() != null) {
         // DJOIN operation
 
@@ -349,6 +342,13 @@ public class query2 {
 
         if (qs.getUseIndex()) {
           System.out.println("Using index for range query...");
+          // initialize the index file
+          String indexFileName = relName1 + "_" + qs.getQueryField();
+          LSHFIndexFile lshf = new LSHFIndexFile(indexFileName);
+          LSHFFileScan scan = new LSHFFileScan(lshf, heapFile1, targetVector);
+          String keyStr = lshf.computeHash(targetVector, 0, lshf.getH());
+          Vector100DKey key = new Vector100DKey(keyStr);
+
           Tuple[] results = scan.LSHFFileRangeScan(key, qs.getThreshold(), attrTypes1, qs.getQueryField());
           System.out.println("Result Tuple:");
           for (Tuple tuple1 : results) {
@@ -401,6 +401,12 @@ public class query2 {
         // Nearest Neighbor operation
         if (qs.getUseIndex()) {
           System.out.println("Using index for NN query...");
+          // initialize the index file
+          String indexFileName = relName1 + "_" + qs.getQueryField();
+          LSHFIndexFile lshf = new LSHFIndexFile(indexFileName);
+          LSHFFileScan scan = new LSHFFileScan(lshf, heapFile1, targetVector);
+          String keyStr = lshf.computeHash(targetVector, 0, lshf.getH());
+          Vector100DKey key = new Vector100DKey(keyStr);
 
           Tuple[] results = scan.LSHFFileNNScan(key, qs.getThreshold(), attrTypes1, qs.getQueryField());
           System.out.println("Result Tuple:");
@@ -500,7 +506,7 @@ public class query2 {
       }
       qs[0].setQueryField(Integer.parseInt(tokens[0])); // QA
       qs[0].setTargetFileName(tokens[1]); // T: target vector file name
-      qs[0].setUseIndex(tokens[2].equals("Y")); // Use index or not
+      qs[0].setUseIndex(tokens[2].equals("H")); // Use index or not
       int numOut = tokens.length - 3;
       int[] outFields = new int[numOut];
       for (int i = 0; i < numOut; i++) {
@@ -521,7 +527,7 @@ public class query2 {
       qs[0].setQueryField(Integer.parseInt(tokens[0])); // QA
       qs[0].setTargetFileName(tokens[1]); // T: target vector file name
       qs[0].setThreshold(Integer.parseInt(tokens[2])); // D: distance threshold
-      qs[0].setUseIndex(tokens[3].equals("Y")); // Use index or not
+      qs[0].setUseIndex(tokens[3].equals("H")); // Use index or not
       int numOut = tokens.length - 4;
       int[] outFields = new int[numOut];
       for (int i = 0; i < numOut; i++) {
@@ -539,7 +545,7 @@ public class query2 {
       qs[0].setQueryField(Integer.parseInt(tokens[0])); // QA
       qs[0].setTargetFileName(tokens[1]); // T: target vector file name
       qs[0].setThreshold(Integer.parseInt(tokens[2])); // K: number of nearest neighbors
-      qs[0].setUseIndex(tokens[3].equals("Y")); // Use index or not
+      qs[0].setUseIndex(tokens[3].equals("H")); // Use index or not
       int numOut = tokens.length - 4;
       int[] outFields = new int[numOut];
       for (int i = 0; i < numOut; i++) {
@@ -561,7 +567,7 @@ public class query2 {
         qs[0].setQueryField(Integer.parseInt(tokens[0])); // QA
         qs[0].setTargetFileName(tokens[1]); // T: target vector file name
         qs[0].setThreshold(Integer.parseInt(tokens[2])); // D: distance threshold
-        qs[0].setUseIndex(tokens[3].equals("Y")); // Use index or not
+        qs[0].setUseIndex(tokens[3].equals("H")); // Use index or not
         int numOut = tokens.length - 4;
         int[] outFields = new int[numOut];
         for (int i = 0; i < numOut; i++) {
@@ -579,7 +585,7 @@ public class query2 {
         }
         qs[1].setQueryField(Integer.parseInt(tokens[0])); // QA
         qs[1].setThreshold(Integer.parseInt(tokens[1])); // D: distance threshold
-        qs[1].setUseIndex(tokens[2].equals("Y")); // Use index or not
+        qs[1].setUseIndex(tokens[2].equals("H")); // Use index or not
         numOut = tokens.length - 3;
         outFields = new int[numOut];
         for (int i = 0; i < numOut; i++) {
@@ -598,7 +604,7 @@ public class query2 {
         qs[0].setQueryField(Integer.parseInt(tokens[0])); // QA
         qs[0].setTargetFileName(tokens[1]); // T: target vector file name
         qs[0].setThreshold(Integer.parseInt(tokens[2])); // K: number of nearest neighbors
-        qs[0].setUseIndex(tokens[3].equals("Y")); // Use index or not
+        qs[0].setUseIndex(tokens[3].equals("H")); // Use index or not
         int numOut = tokens.length - 4;
         int[] outFields = new int[numOut];
         for (int i = 0; i < numOut; i++) {
@@ -616,7 +622,7 @@ public class query2 {
         }
         qs[1].setQueryField(Integer.parseInt(tokens[0])); // QA
         qs[1].setThreshold(Integer.parseInt(tokens[1])); // K: number of nearest neighbors
-        qs[1].setUseIndex(tokens[2].equals("Y")); // Use index or not
+        qs[1].setUseIndex(tokens[2].equals("H")); // Use index or not
         numOut = tokens.length - 3;
         outFields = new int[numOut];
         for (int i = 0; i < numOut; i++) {

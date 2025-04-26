@@ -64,6 +64,7 @@ public class batchdelete {
 
       // Open an exising heap file for storing tuples (database file)
       Heapfile hf = new Heapfile(relName);
+      System.out.println("Heapfile contains " + hf.getRecCnt() + " tuples before deletion.");
       Scan scan = null;
 
       // Process tuples.
@@ -84,7 +85,7 @@ public class batchdelete {
           while (!done && !is_deleted) {
             try {
               tuple = scan.getNext(rid);
-              System.out.printf("tuple with RID<%d, %d>\n", rid.pageNo.pid, rid.slotNo);
+//              System.out.printf("tuple with RID<%d, %d>\n", rid.pageNo.pid, rid.slotNo);
               if (tuple == null) {
                 done = true;
               }
@@ -198,7 +199,7 @@ public class batchdelete {
         }
       }
 
-      System.out.println("Heapfile contains " + hf.getRecCnt() + " tuples");
+      System.out.println("Heapfile contains " + hf.getRecCnt() + " tuples after deletion.");
       // At the end of batch insertion, output the disk I/O counts.
       System.out.println("Page reads: " + PCounter.rcounter);
       System.out.println("Page writes: " + PCounter.wcounter);
