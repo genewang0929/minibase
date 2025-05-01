@@ -16,6 +16,9 @@ import java.io.IOException;
 import static dbmgr.DBOP.*;
 
 public class batchinsert2 {
+
+  private static boolean DEBUG = true;
+
   public static void main(String[] args) {
     if (args.length != 2) {
       System.err.println("Usage: batchinsert <UPDATEFILENAME> >RELNAME>");
@@ -36,6 +39,11 @@ public class batchinsert2 {
       String[] typeTokens = br.readLine().trim().split("\\s+");
 
       AttrType[] attrTypes = new AttrType[numAttrs];
+
+      if (DEBUG) {
+        System.out.println("attrTypes.length: " + attrTypes.length);
+      }
+
       for (int i = 0; i < numAttrs; i++) {
         int typeCode = Integer.parseInt(typeTokens[i]);
         switch (typeCode) {
@@ -99,14 +107,15 @@ public class batchinsert2 {
           switch (attrTypes[i].attrType) {
             case AttrType.attrInteger: {
               // Check if the intValue matches the attribute to be inserted
-              int insertValue = tuple.getIntFld(i);
+              int insertValue = tuple.getIntFld(i+1);
 
               // update index files
               try {
-                BTreeFile btree_int = new BTreeFile(relName);
+                BTreeFile btree_int = new BTreeFile(relName + "_" + (i+1));
                 KeyClass intKey = new IntegerKey(insertValue);
                 btree_int.insert(intKey, rid);
                 btree_int.close();
+                System.out.println("Index File successfully updated");
               } catch (Exception e) {
                 System.out.println("Index File for this column does not exist");
               }
@@ -115,14 +124,15 @@ public class batchinsert2 {
             }
             case AttrType.attrReal: {
               // Check if the floatValue matches the attribute to be inserted
-              float insertFloatValue = tuple.getFloFld(i);
+              float insertFloatValue = tuple.getFloFld(i+1);
 
               // update index files
               try {
-                BTreeFile btree_real = new BTreeFile(relName);
+                BTreeFile btree_real = new BTreeFile(relName + "_" + (i+1));
                 KeyClass realKey = new IntegerKey((int)insertFloatValue);
                 btree_real.insert(realKey, rid);
                 btree_real.close();
+                System.out.println("Index File successfully updated");
               } catch (Exception e) {
                 System.out.println("Index File for this column does not exist");
               }
@@ -131,14 +141,15 @@ public class batchinsert2 {
             }
             case AttrType.attrString: {
               // Check if the strValue matches the attribute to be inserted
-              String insertStrValue = tuple.getStrFld(i);
+              String insertStrValue = tuple.getStrFld(i+1);
 
               // update index files
               try {
-                BTreeFile btree_str = new BTreeFile(relName);
+                BTreeFile btree_str = new BTreeFile(relName + "_" + (i+1));
                 KeyClass strKey = new StringKey(insertStrValue);
                 btree_str.insert(strKey, rid);
                 btree_str.close();
+                System.out.println("Index File successfully updated");
               } catch (Exception e) {
                 System.out.println("Index File for this column does not exist");
               }
@@ -146,12 +157,13 @@ public class batchinsert2 {
               break;
             }
             case AttrType.attrVector100D: {
-              Vector100Dtype vector100Dtype = tuple.get100DVectFld(i);
+              Vector100Dtype vector100Dtype = tuple.get100DVectFld(i+1);
 
               // update index files
               try {
-                LSHFIndexFile lshf = new LSHFIndexFile(relName + (i+1));
+                LSHFIndexFile lshf = new LSHFIndexFile(relName + "_" + (i+1));
                 lshf.insert(vector100Dtype, rid);
+                System.out.println("Index File successfully updated");
               } catch (Exception e) {
                 System.out.println("Index File for this column does not exist");
               }
@@ -165,6 +177,7 @@ public class batchinsert2 {
       }
       DBOP.close_database();
 
+      SystemDefs.JavabaseBM.flushAllPages();
 
       System.out.println("Heapfile contains " + hf.getRecCnt() + " tuples");
       // At the end of batch insertion, output the disk I/O counts.

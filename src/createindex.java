@@ -8,6 +8,9 @@ import diskmgr.*;
 import bufmgr.*;
 
 public class createindex {
+
+  private static boolean DEBUG = true;
+
   public static void main(String[] args) {
     if (args.length != 4) {
       System.err.println("Usage: createindex RELNAME COLUMNID L h");
@@ -20,8 +23,9 @@ public class createindex {
 
     try {
       // initialize Minibase on existing DB
-      SystemDefs.MINIBASE_RESTART_FLAG = true;  // Use the existing DBMS
-      DBOP.open_databaseDBNAME("mydb", 1000, 1000);
+      String dbpath = "/tmp/" + System.getProperty("user.name") + "." + relName;
+      String logpath = "/tmp/" + System.getProperty("user.name") + ".log";
+      SystemDefs sysdef = new SystemDefs(dbpath, 1000, 100, "Clock");
 
       // reset I/O counters
       PCounter.initialize();
@@ -39,8 +43,15 @@ public class createindex {
       // open the heap file for this relation
       Heapfile hf = new Heapfile(relName);
 
-      // build the indexfile name
+      // build the index‐file name
       String idxName = relName + "_" + colNo;
+
+      if (DEBUG) {
+        System.out.println("***********************");
+        System.out.println("[Index File Name]: " + idxName);
+        System.out.println("***********************");
+      }
+
 
       // decide vector vs scalar
       if (types[colNo-1].attrType == AttrType.attrVector100D) {
@@ -84,7 +95,8 @@ public class createindex {
           }
           btf.insert(key, rid);
         }
-//         scan.close();
+        btf.close();
+        scan.closescan();
       }
 
       // flush and report I/O
