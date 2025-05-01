@@ -1,3 +1,4 @@
+import btree.*;
 import dbmgr.DBOP;
 import diskmgr.PCounter;
 import global.AttrType;
@@ -13,6 +14,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+
+import lshfindex.*;
 
 public class batchdelete {
   public static void main(String[] args) {
@@ -98,12 +101,23 @@ public class batchdelete {
               tuple.setHdr((short) numAttrs, attrTypes, null);
               // Check if the tuple matches the attr_num to be deleted
               switch (attrTypeMap.get(attr_num).attrType) {
-                case AttrType.attrInteger:
+                case AttrType.attrInteger: {
                   int intValue = tuple.getIntFld(attr_num);
 //                  System.out.println("intValue: " + intValue);
 
                   // Check if the intValue matches the attribute to be deleted
                   int deleteValue = Integer.parseInt(line.trim().split(" ")[1]);
+
+                  // update index files
+                  try {
+                    BTreeFile btree_int = new BTreeFile(relName);
+                    KeyClass intKey = new IntegerKey(deleteValue);
+                    btree_int.Delete(intKey, rid);
+                    btree_int.close();
+                  } catch (Exception e) {
+                    System.out.println("Index File for this column does not exist");
+                  }
+
                   if (intValue == deleteValue) {
                     // Delete the record
                     try {
@@ -116,12 +130,24 @@ public class batchdelete {
                     }
                   }
                   break;
-                case AttrType.attrReal:
+                }
+                case AttrType.attrReal: {
                   float floatValue = tuple.getFloFld(attr_num);
 //                  System.out.println("floatValue: " + floatValue);
 
                   // Check if the floatValue matches the attribute to be deleted
                   float deleteFloatValue = Float.parseFloat(line.trim().split(" ")[1]);
+
+                  // update index files
+                  try {
+                    BTreeFile btree_real = new BTreeFile(relName);
+                    KeyClass realKey = new IntegerKey((int)deleteFloatValue);
+                    btree_real.Delete(realKey, rid);
+                    btree_real.close();
+                  } catch (Exception e) {
+                    System.out.println("Index File for this column does not exist");
+                  }
+
                   if (floatValue == deleteFloatValue) {
                     // Delete the record
                     System.out.printf("Delete tuple with RID<%d, %d>\n", rid.pageNo.pid, rid.slotNo);
@@ -135,7 +161,8 @@ public class batchdelete {
                     }
                   }
                   break;
-                case AttrType.attrString:
+                }
+                case AttrType.attrString: {
                   String strValue = tuple.getStrFld(attr_num);
 //                  System.out.println("strValue: " + strValue);
 
@@ -146,6 +173,17 @@ public class batchdelete {
                     deletedStrValues[i - 1] = deletedStr[i];
                   }
                   String deleteStrValue = String.join(" ", deletedStrValues);
+
+                  // update index files
+                  try {
+                    BTreeFile btree_str = new BTreeFile(relName);
+                    KeyClass strKey = new StringKey(deleteStrValue);
+                    btree_str.Delete(strKey, rid);
+                    btree_str.close();
+                  } catch (Exception e) {
+                    System.out.println("Index File for this column does not exist");
+                  }
+
                   if (strValue.equals(deleteStrValue)) {
                     // Delete the record
                     try {
@@ -158,7 +196,8 @@ public class batchdelete {
                     }
                   }
                   break;
-                case AttrType.attrVector100D:
+                }
+                case AttrType.attrVector100D: {
                   Vector100Dtype vector100Dtype = tuple.get100DVectFld(attr_num);
 //                  System.out.println("vector100Dtype");
 //                  for (int i = 0; i < vector100Dtype.getDimension().length; i++) {
@@ -174,6 +213,15 @@ public class batchdelete {
                     deletedVectorValues[i - 1] = Short.parseShort(deletedVectorValuesStr[i]);
                   }
                   deleteVector100Dtype.setDimension(deletedVectorValues);
+
+                  // update index files
+                  try {
+                    LSHFIndexFile lshf = new LSHFIndexFile(relName);
+                    lshf.delete(deleteVector100Dtype, rid);
+                  } catch (Exception e) {
+                    System.out.println("Index File for this column does not exist");
+                  }
+
                   if (vector100Dtype.equals(deleteVector100Dtype)) {
                     // Delete the record
                     try {
@@ -186,8 +234,8 @@ public class batchdelete {
                     }
                   }
                   break;
-                default:
-                  System.err.println("Unknown attribute number: " + attr_num);
+                }
+                default: { System.err.println("Unknown attribute number: " + attr_num); }
               }
             }
           }

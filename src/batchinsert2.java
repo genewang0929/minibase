@@ -6,6 +6,8 @@ import global.SystemDefs;
 import global.Vector100Dtype;
 import heap.Heapfile;
 import heap.Tuple;
+import btree.*;
+import lshfindex.*;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -37,20 +39,20 @@ public class batchinsert2 {
       for (int i = 0; i < numAttrs; i++) {
         int typeCode = Integer.parseInt(typeTokens[i]);
         switch (typeCode) {
-          case 1:
-            attrTypes[i] = new AttrType(AttrType.attrInteger);
-            break;
-          case 2:
-            attrTypes[i] = new AttrType(AttrType.attrReal);
-            break;
-          case 3:
-            attrTypes[i] = new AttrType(AttrType.attrString);
-            break;
-          case 4:
-            attrTypes[i] = new AttrType(AttrType.attrVector100D);
-            break;
-          default:
-            throw new IOException("Unknown attribute type code: " + typeCode);
+        case 1:
+          attrTypes[i] = new AttrType(AttrType.attrInteger);
+          break;
+        case 2:
+          attrTypes[i] = new AttrType(AttrType.attrReal);
+          break;
+        case 3:
+          attrTypes[i] = new AttrType(AttrType.attrString);
+          break;
+        case 4:
+          attrTypes[i] = new AttrType(AttrType.attrVector100D);
+          break;
+        default:
+          throw new IOException("Unknown attribute type code: " + typeCode);
         }
       }
 
@@ -80,8 +82,9 @@ public class batchinsert2 {
           }
           tupleValues[i] = nextLine;
         }
-        if (eof)
+        if (eof) {
           break;
+        }
 
         // Create a tuple with numAttrs fields.
         Tuple tuple = create_tuple(numAttrs, attrTypes, tupleValues);
@@ -90,6 +93,75 @@ public class batchinsert2 {
         byte[] tupleData = tuple.getTupleByteArray();
         RID rid = hf.insertRecord(tupleData);
         System.out.printf("Inserted tuple with RID<%d, %d>\n", rid.pageNo.pid, rid.slotNo);
+
+        // update index files
+        for (int i = 0; i < attrTypes.length; i++) {
+          switch (attrTypes[i].attrType) {
+            case AttrType.attrInteger: {
+              // Check if the intValue matches the attribute to be inserted
+              int insertValue = tuple.getIntFld(i);
+
+              // update index files
+              try {
+                BTreeFile btree_int = new BTreeFile(relName);
+                KeyClass intKey = new IntegerKey(insertValue);
+                btree_int.insert(intKey, rid);
+                btree_int.close();
+              } catch (Exception e) {
+                System.out.println("Index File for this column does not exist");
+              }
+
+              break;
+            }
+            case AttrType.attrReal: {
+              // Check if the floatValue matches the attribute to be inserted
+              float insertFloatValue = tuple.getFloFld(i);
+
+              // update index files
+              try {
+                BTreeFile btree_real = new BTreeFile(relName);
+                KeyClass realKey = new IntegerKey((int)insertFloatValue);
+                btree_real.insert(realKey, rid);
+                btree_real.close();
+              } catch (Exception e) {
+                System.out.println("Index File for this column does not exist");
+              }
+
+              break;
+            }
+            case AttrType.attrString: {
+              // Check if the strValue matches the attribute to be inserted
+              String insertStrValue = tuple.getStrFld(i);
+
+              // update index files
+              try {
+                BTreeFile btree_str = new BTreeFile(relName);
+                KeyClass strKey = new StringKey(insertStrValue);
+                btree_str.insert(strKey, rid);
+                btree_str.close();
+              } catch (Exception e) {
+                System.out.println("Index File for this column does not exist");
+              }
+
+              break;
+            }
+            case AttrType.attrVector100D: {
+              Vector100Dtype vector100Dtype = tuple.get100DVectFld(i);
+
+              // update index files
+              try {
+                LSHFIndexFile lshf = new LSHFIndexFile(relName + (i+1));
+                lshf.insert(vector100Dtype, rid);
+              } catch (Exception e) {
+                System.out.println("Index File for this column does not exist");
+              }
+
+              break;
+            }
+            default: { System.err.println("Unknown attribute number: " + i); }
+          }
+        }
+
       }
       DBOP.close_database();
 
