@@ -11,7 +11,7 @@ import lshfindex.*;
  * Chooses B+‐tree for scalar joins or LSH forest (layer 0) for 100D vector joins.
  */
 public class INLJoins extends Iterator {
-  private static final boolean DEBUG = false;
+  private static final boolean DEBUG = true;
 
   // input schemas
   private AttrType[] _in1, _in2;
@@ -84,11 +84,17 @@ public class INLJoins extends Iterator {
       _outerJoinFld = f2.offset;
       _innerJoinFld = f1.offset;
     } else {
+      if (DEBUG) {
+        System.out.println("[INLJoins] Exception: Join operands must reference outer and inner.");
+      }
       throw new Exception("Join operands must reference outer and inner");
     }
 
     // pick index implementation
     if (in1[_outerJoinFld-1].attrType == AttrType.attrVector100D) {
+      if (DEBUG) {
+        System.out.println("[INLJoins] indexName: " + indexName);
+      }
       _useVectorIndex = true;
       _distanceThreshold = cond.distance;
       _lshIndex = new LSHFIndexFile(indexName);
@@ -97,6 +103,14 @@ public class INLJoins extends Iterator {
     } else {
       _useVectorIndex = false;
       _btIndex = new BTreeFile(indexName);
+    }
+
+    if (DEBUG) {
+      System.out.println("[INLJoins] index file opened.");
+      // System.out.println("[INLJoins] _in1: " + _in1 + ", len1: " + _len1);
+      // System.out.println("[INLJoins] _in1: " + _in2 + ", len1: " + _len2);
+      // System.out.println("[INLJoins] _s1: " + _s1 + ", s2: " + _s2);
+      // System.out.println("[INLJoins] _in1: " + _in2 + ", len1: " + _len2);
     }
 
     // build result tuple header
@@ -111,7 +125,20 @@ public class INLJoins extends Iterator {
         _projList,
         _nOutFlds
     );
+
+    if (DEBUG) {
+      System.out.println("[INLJoins] setup_op_tuple succeeded.");
+    }
+
     _resultTuple.setHdr((short)_nOutFlds, resultAttrs, resultStrSizes);
+
+    if (DEBUG) {
+      System.out.println("[INLJoins] setHdr succeeded.");
+    }
+
+    if (DEBUG) {
+      System.out.println("[INLJoins] INLJoins created.");
+    }
   }
 
   /**
@@ -171,8 +198,7 @@ public class INLJoins extends Iterator {
           _btScan = (BTFileScan)_lshTree.new_scan(convertedKey, convertedKey);
         } else {
           int val = _outerTuple.getIntFld(_outerJoinFld);
-          _btScan = (BTFileScan)
-              _btIndex.new_scan(new IntegerKey(val), new IntegerKey(val));
+          _btScan = (BTFileScan)_btIndex.new_scan(new IntegerKey(val), new IntegerKey(val));
         }
       }
     } catch (Exception ex) {

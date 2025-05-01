@@ -35,14 +35,16 @@ class TupleArrayIterator extends Iterator {
  */
 public class DistanceJoin {
 
+  private static final boolean DEBUG = true;
+
   /**
    * DJOIN1: join Range‐query(R1) with R2 by distance ≤ D2 on (QA1,QA2).
    */
   public static Iterator djoinRange(
       String rel1, AttrType[] type1, short[] ss1,
-      int QA1, Vector100Dtype T1, int D1, char I1,
+      int QA1, Vector100Dtype T1, int D1,
       String rel2, AttrType[] type2, short[] ss2,
-      int QA2, int D2, char I2,
+      int QA2, int D2,
       FldSpec[] proj_list, int n_out_flds,
       int amt_of_mem
   ) throws Exception {
@@ -52,8 +54,8 @@ public class DistanceJoin {
     LSHFIndexFile lshIndex1 = new LSHFIndexFile(rel1 + "_" + QA1);
     LSHFFileScan scan1 = new LSHFFileScan(lshIndex1, hf1, T1);
     String bit = lshIndex1.computeHash(T1, /*layer*/0, /*prefix*/lshIndex1.getH());
-    KeyClass startKey = new IntegerKey(Integer.parseInt(bit,2));
-    Tuple[] outerTuples = scan1.LSHFFileRangeScan(startKey, D1, type1, QA1);
+    KeyClass startKey = new Vector100DKey(bit);
+    Tuple[] outerTuples = scan1.LSHFFileRangeScan(startKey, D2, type1, QA1);
 
     // 2) wrap as Iterator
     TupleArrayIterator outerIter = new TupleArrayIterator(type1, ss1, outerTuples);
@@ -66,14 +68,18 @@ public class DistanceJoin {
     ce.type1     = new AttrType(AttrType.attrVector100D);
     ce.type2     = new AttrType(AttrType.attrVector100D);
 
-    ce.operand1.symbol = new FldSpec(new RelSpec(RelSpec.innerRel), QA2);
-    ce.operand2.symbol = new FldSpec(new RelSpec(RelSpec.outer),   QA1);
+    ce.operand2.symbol = new FldSpec(new RelSpec(RelSpec.innerRel), QA2);
+    ce.operand1.symbol = new FldSpec(new RelSpec(RelSpec.outer),   QA1);
     ce.distance = D2;
     rightFilter[0] = ce;
 
-    // 4) pick inner index (we always use B_Index for demonstration)
-    IndexType idxType = new IndexType(IndexType.B_Index);
-    String idxName = rel2 + "_idx_" + QA2;
+    // 4) pick index type
+    IndexType idxType = new IndexType(IndexType.LSHFIndex);
+    String idxName = rel1 + "_" + QA1;
+
+    if (DEBUG) {
+      System.out.println("[DistanceJoin] ready to return.");
+    }
 
     // 5) return an Index‐Nested‐Loop Join
     return new INLJoins(
@@ -96,9 +102,9 @@ public class DistanceJoin {
    */
   public static Iterator djoinNN(
       String rel1, AttrType[] type1, short[] ss1,
-      int QA1, Vector100Dtype T1, int K1, char I1,
+      int QA1, Vector100Dtype T1, int K1,
       String rel2, AttrType[] type2, short[] ss2,
-      int QA2, int D2, char I2,
+      int QA2, int D2,
       FldSpec[] proj_list, int n_out_flds,
       int amt_of_mem
   ) throws Exception {
@@ -108,7 +114,7 @@ public class DistanceJoin {
     LSHFIndexFile lshIndex1 = new LSHFIndexFile(rel1 + "_" + QA1);
     LSHFFileScan scan1 = new LSHFFileScan(lshIndex1, hf1, T1);
     String bit = lshIndex1.computeHash(T1, /*layer*/0, /*prefix*/lshIndex1.getH());
-    KeyClass startKey = new IntegerKey(Integer.parseInt(bit,2));
+    KeyClass startKey = new Vector100DKey(bit);
     Tuple[] outerTuples = scan1.LSHFFileNNScan(startKey, K1, type1, QA1);
 
     // 2) wrap as Iterator
@@ -121,13 +127,17 @@ public class DistanceJoin {
     ce.op        = new AttrOperator(AttrOperator.aopLE);
     ce.type1     = new AttrType(AttrType.attrVector100D);
     ce.type2     = new AttrType(AttrType.attrVector100D);
-    ce.operand1.symbol = new FldSpec(new RelSpec(RelSpec.innerRel), QA2);
-    ce.operand2.symbol = new FldSpec(new RelSpec(RelSpec.outer),   QA1);
+    ce.operand2.symbol = new FldSpec(new RelSpec(RelSpec.innerRel), QA2);
+    ce.operand1.symbol = new FldSpec(new RelSpec(RelSpec.outer),   QA1);
     ce.distance = D2;
     rightFilter[0] = ce;
 
     IndexType idxType = new IndexType(IndexType.B_Index);
-    String idxName   = rel2 + "_idx_" + QA2;
+    String idxName   = rel1 + "_" + QA1;
+
+    if (DEBUG) {
+      System.out.println("[DistanceJoin] ready to return.");
+    }
 
     return new INLJoins(
       type1, type1.length, ss1,
