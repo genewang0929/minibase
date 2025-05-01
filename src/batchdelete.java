@@ -284,10 +284,13 @@ public class batchdelete {
           // update index files
           try {
             BTreeFile btree_int = new BTreeFile(relName + "_" + (i+1));
+            System.out.println("Index File successfully opened");
             KeyClass intKey = new IntegerKey(intValue);
+            System.out.println("Key successfully created");
             btree_int.Delete(intKey, rid);
-            btree_int.close();
             System.out.println("Index File successfully updated");
+            btree_int.close();
+            System.out.println("Index File successfully closed");
           } catch (Exception e) {
             System.out.println("Index File for this column does not exist: " + relName + "_" + (i+1));
           }
@@ -306,10 +309,13 @@ public class batchdelete {
           // update index files
           try {
             BTreeFile btree_real = new BTreeFile(relName + "_" + (i+1));
+            System.out.println("Index File successfully opened");
             KeyClass realKey = new IntegerKey((int)floatValue);
+            System.out.println("Key successfully created");
             btree_real.Delete(realKey, rid);
-            btree_real.close();
             System.out.println("Index File successfully updated");
+            btree_real.close();
+            System.out.println("Index File successfully closed");
           } catch (Exception e) {
             System.out.println("Index File for this column does not exist: " + relName + "_" + (i+1));
           }
@@ -328,10 +334,13 @@ public class batchdelete {
           // update index files
           try {
             BTreeFile btree_str = new BTreeFile(relName + "_" + (i+1));
+            System.out.println("Index File successfully opened");
             KeyClass strKey = new StringKey(strValue);
+            System.out.println("Key successfully created");
             btree_str.Delete(strKey, rid);
-            btree_str.close();
             System.out.println("Index File successfully updated");
+            btree_str.close();
+            System.out.println("Index File successfully closed");
           } catch (Exception e) {
             System.out.println("Index File for this column does not exist: " + relName + "_" + (i+1));
           }
@@ -349,8 +358,11 @@ public class batchdelete {
           // update index files
           try {
             LSHFIndexFile lshf = new LSHFIndexFile(relName + "_" + (i + 1));
+            System.out.println("Index File successfully opened");
             lshf.insert(vector100Dtype, rid);
             System.out.println("Index File successfully updated");
+            lshf.close();
+            System.out.println("Index File successfully closed");
           } catch (Exception e) {
             System.out.println("Index File for this column does not exist: " + relName + "_" + (i+1));
           }

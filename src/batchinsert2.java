@@ -164,6 +164,8 @@ public class batchinsert2 {
                 LSHFIndexFile lshf = new LSHFIndexFile(relName + "_" + (i+1));
                 lshf.insert(vector100Dtype, rid);
                 System.out.println("Index File successfully updated");
+                lshf.close();
+                System.out.println("Index File successfully closed");
               } catch (Exception e) {
                 System.out.println("Index File for this column does not exist");
               }
@@ -177,7 +179,7 @@ public class batchinsert2 {
       }
       DBOP.close_database();
 
-      SystemDefs.JavabaseBM.flushAllPages();
+      // SystemDefs.JavabaseBM.flushAllPages();
 
       System.out.println("Heapfile contains " + hf.getRecCnt() + " tuples");
       // At the end of batch insertion, output the disk I/O counts.

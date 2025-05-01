@@ -23,9 +23,8 @@ public class createindex {
 
     try {
       // initialize Minibase on existing DB
-      String dbpath = "/tmp/" + System.getProperty("user.name") + "." + relName;
-      String logpath = "/tmp/" + System.getProperty("user.name") + ".log";
-      SystemDefs sysdef = new SystemDefs(dbpath, 1000, 100, "Clock");
+      SystemDefs.MINIBASE_RESTART_FLAG = true;
+      DBOP.open_databaseDBNAME("mydb", 1000, 1000);
 
       // reset I/O counters
       PCounter.initialize();
@@ -66,14 +65,20 @@ public class createindex {
           Vector100Dtype v = t.get100DVectFld(colNo);
           lshIndex.insert(v, rid);
         }
-        // scan.close();
+        scan.closescan();
         lshIndex.close();
       }
       else {
+        int keyType;
+        if (types[colNo-1].attrType == AttrType.attrInteger || types[colNo-1].attrType == AttrType.attrReal) {
+          keyType = AttrType.attrInteger;
+        } else {
+          keyType = AttrType.attrString;
+        }
         // --- build B-tree index ---
         BTreeFile btf = new BTreeFile(
             idxName,
-            types[colNo-1].attrType,
+            keyType,
             /* keysize */ 4,
             /* delete fashion */ 1);
 
