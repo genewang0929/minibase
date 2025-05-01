@@ -67,13 +67,13 @@ public class LSHFIndexFile {
         this.h = h;
         this.L = L;
         this.rand = new Random();
-    
+
         // Try to get the header page ID from the file entry.
-        headerPageId = SystemDefs.JavabaseDB.get_file_entry(fileName);
-        
-        if (headerPageId == null) {
+        this.headerPageId = SystemDefs.JavabaseDB.get_file_entry(fileName);
+
+        if (this.headerPageId == null) {
             // --- HEADER DOES NOT EXIST: Create a new header page and generate aValues ---
-            
+
             // Allocate aValues and generate new ones.
             System.out.println("[Read Header Test] hash function for " + fileName);
             aValues = new byte[L][h][100];
@@ -91,24 +91,24 @@ public class LSHFIndexFile {
             }
 
             System.out.println("[Read Header Test] a values generated");
-            
+
             // Create a new header page.
             // headerPageId = new PageId();
-            headerPage = new LSHFHeaderPage(/*headerPageId,*/ L, h, nAttrs, attrTypes);  // No-arg constructor creates a new page.
-            headerPageId = headerPage.getPageId();
+            this.headerPage = new LSHFHeaderPage(/*headerPageId,*/ L, h, nAttrs, attrTypes);  // No-arg constructor creates a new page.
+            this.headerPageId = headerPage.getPageId();
 
             if (DEBUG) {
-                System.out.println("[Read Header Test] headerPageId: " + headerPageId.pid);
+                System.out.println("[Read Header Test] headerPageId: " + this.headerPageId.pid);
             }
 
-            SystemDefs.JavabaseDB.add_file_entry(fileName, headerPageId);
-            System.out.println("creating headerPageId = " + headerPageId.pid);
-            
+            SystemDefs.JavabaseDB.add_file_entry(this.fileName, this.headerPageId);
+            System.out.println("creating headerPageId = " + this.headerPageId.pid);
+
             // Store L and h in the header page (using the known offsets in LSHFHeaderPage)
-            Convert.setIntValue(L, LSHFHeaderPage.OFFSET_L, headerPage.getHFpageArray());
-            Convert.setIntValue(h, LSHFHeaderPage.OFFSET_h, headerPage.getHFpageArray());
+            Convert.setIntValue(L, LSHFHeaderPage.OFFSET_L, this.headerPage.getHFpageArray());
+            Convert.setIntValue(h, LSHFHeaderPage.OFFSET_h, this.headerPage.getHFpageArray());
             // The LSHFHeaderPage constructor (init) should have already created space for L layer IDs and a-values.
-            
+
             // Now, write the generated aValues into the header page.
             for (int l = 0; l < L; l++) {
                 for (int i = 0; i < h; i++) {
@@ -119,8 +119,8 @@ public class LSHFIndexFile {
             }
         } else {
             // --- HEADER EXISTS: Open the header page and read the stored aValues ---
-            headerPage = new LSHFHeaderPage(headerPageId);
-            
+            this.headerPage = new LSHFHeaderPage(this.headerPageId);
+
             // Read L and h from header page.
             int numLayers = headerPage.getNumLayers();
             int numHashFuncs = headerPage.getNumHashFunctions();
@@ -128,60 +128,62 @@ public class LSHFIndexFile {
             if (numLayers != L || numHashFuncs != h) {
                 throw new Exception("Mismatch in L or h between catalog and parameters");
             }
-            
+
             // Allocate aValues array and load from the header page.
             aValues = new byte[L][h][100];
             for (int l = 0; l < L; l++) {
                 for (int i = 0; i < h; i++) {
                     for (int j = 0; j < 100; j++) {
-                        aValues[l][i][j] = headerPage.getAValue(l, i, j);
+                        aValues[l][i][j] = this.headerPage.getAValue(l, i, j);
                     }
                 }
             }
         }
-        
+
         // Now, initialize one prefix tree (BTreeFile) per layer.
         prefixTrees = new BTreeFile[L];
         for (int l = 0; l < L; l++) {
             // Each prefix tree uses a unique file name (e.g., fileName_layer0, fileName_layer1, ...).
             String layerName = fileName + "_layer" + l;
-            prefixTrees[l] = new BTreeFile(layerName, AttrType.attrInteger, 4, 1);
-            
+            this.prefixTrees[l] = new BTreeFile(layerName, AttrType.attrInteger, 4, 1);
+
             // Get this B-tree's header page ID.
             PageId btHeaderId = prefixTrees[l].getHeaderPage().getCurPage();
-            
+
             // Record this header page ID in our LSHFHeaderPage.
-            headerPage.setLayerHeaderPageId(l, btHeaderId);
+            this.headerPage.setLayerHeaderPageId(l, btHeaderId);
         }
 
-        System.out.println("[LSHFIndexFile] Finished creating file. PageId: " + headerPageId.pid);
+        // SystemDefs.JavabaseBM.unpinPage(headerPageId, true);
+
+        System.out.println("[LSHFIndexFile] Finished creating file. PageId: " + this.headerPageId.pid);
     }
-    
+
 
     // constructor: open existing index file
     public LSHFIndexFile(String fileName) throws Exception {
         // Save file name.
         this.fileName = fileName;
-        
+
         // Open the header page.
         String headerFileName = fileName;
-        
-        // Get the page ID of the header page from the database catalog.
-        PageId headerPageId = SystemDefs.JavabaseDB.get_file_entry(headerFileName);
-        System.out.println("[Read Header Test] try open: " + headerFileName);
-        if (headerPageId == null) {
+
+        // Get the page ID of the header page
+        this.headerPageId = SystemDefs.JavabaseDB.get_file_entry(headerFileName);
+        // System.out.println("[Read Header Test] try open: " + headerFileName);
+        if (this.headerPageId == null) {
             throw new Exception("Header page not found for file: " + headerFileName);
         }
 
-        System.out.println("opening: headerPageId = " + headerPageId.pid);
-        
-        this.headerPage = new LSHFHeaderPage(headerPageId);
+        System.out.println("opening: headerPageId = " + this.headerPageId.pid);
+
+        this.headerPage = new LSHFHeaderPage(this.headerPageId);
         // Pin the header page from the buffer manager.
-        SystemDefs.JavabaseBM.pinPage(headerPageId, this.headerPage, false);
-        
+        SystemDefs.JavabaseBM.pinPage(this.headerPageId, this.headerPage, false);
+
         // Open the header page as an LSHFHeaderPage (assumes a constructor exists that accepts a Page).
         // this.headerPage = new LSHFHeaderPage(headerPage);
-        
+
         // Read the number of layers (L) and number of hash functions per layer (h)
         int numLayers = headerPage.getNumLayers();
         int numHashFuncs = headerPage.getNumHashFunctions();
@@ -189,7 +191,7 @@ public class LSHFIndexFile {
         this.h = numHashFuncs;
         System.out.println("[Read Header Test] numLayers: " + this.L);
         System.out.println("[Read Header Test] numHashFuncs: " + this.h);
-        
+
         // Allocate the in-memory array for aValues and load them from the header page.
         aValues = new byte[numLayers][numHashFuncs][100];
         for (int l = 0; l < numLayers; l++) {
@@ -199,7 +201,7 @@ public class LSHFIndexFile {
                 }
             }
         }
-        
+
         // Open the prefix trees for each layer.
         prefixTrees = new BTreeFile[numLayers];
         for (int l = 0; l < numLayers; l++) {
@@ -207,12 +209,12 @@ public class LSHFIndexFile {
             String layerName = fileName + "_layer" + l;
             prefixTrees[l] = new BTreeFile(layerName);  // Open existing B-tree index.
         }
-        
+
         // Optionally, initialize random if needed.
         this.rand = new Random();
-        
+
         // Unpin header page (if desired—depending on whether headerPage is kept in memory)
-        SystemDefs.JavabaseBM.unpinPage(headerPageId, false);
+        SystemDefs.JavabaseBM.unpinPage(this.headerPageId, false);
     }
 
     /**
@@ -297,6 +299,19 @@ public class LSHFIndexFile {
         }
     }
 
+    public void delete(Vector100Dtype vector, RID rid) throws Exception {
+        for (int layer = 0; layer < L; layer++) {
+            // Compute the full h-value hash for this layer.
+            String hashVal = computeHash(vector, layer, h);
+            // Create a Vector100DKey using the computed hash string.
+            Vector100DKey key = new Vector100DKey(hashVal);
+            // Insert into the corresponding prefix tree.
+            IntegerKey convertedKey = LSHF.convertKey(key);
+
+            prefixTrees[layer].Delete(convertedKey, rid);
+        }
+    }
+
     public int getL() {
         return L;
     }
@@ -322,9 +337,38 @@ public class LSHFIndexFile {
             prefixTrees[l].close();
             System.out.println("Prefix Tree " + l + " closed.");
         }
-        if ( headerPage != null) {
-            SystemDefs.JavabaseBM.unpinPage(headerPageId, true);
+
+        boolean closed = false;
+
+        if (headerPage != null) {
+            if (DEBUG) {
+                System.out.println("Try free LSHF headerPage.");
+            }
+
+            // while (!closed) {
+            //     try {
+            //         SystemDefs.JavabaseBM.unpinPage(headerPageId, true);
+            //         closed = true;
+            //         break;
+            //     } catch (Exception e) {
+            //         System.out.println("LSHF headerPage still pinned, unpin again.");
+            //     }
+            // }
+
+            try {
+                SystemDefs.JavabaseBM.unpinPage(headerPageId, true);
+                closed = true;
+            } catch (Exception e) {
+                System.out.println("LSHF headerPage still pinned. Unknown Error.");
+            }
+
+            if (DEBUG && closed) {
+                System.out.println("LSHF headerPage freed.");
+            }
             headerPage = null;
+        }
+        if (DEBUG && closed) {
+            System.out.println("LSHF closed.");
         }
     }
 
@@ -332,7 +376,7 @@ public class LSHFIndexFile {
         // Get the number of layers and hash functions from the header page.
         int numLayers = headerPage.getNumLayers();
         int numHashFuncs = headerPage.getNumHashFunctions();
-    
+
         System.out.println("LSH Forest A values:");
         for (int l = 0; l < numLayers; l++) {
             System.out.println("Layer " + l + ":");
@@ -348,5 +392,5 @@ public class LSHFIndexFile {
             System.out.println();      // extra newline after each layer
         }
     }
-    
+
 }

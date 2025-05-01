@@ -151,6 +151,8 @@ public class LSHFHeaderPage extends HFPage {
         if (magic != MAGIC_VALUE) {
             throw new IOException("Header page not in expected format. Magic number mismatch: " + magic);
         }
+
+        // SystemDefs.JavabaseBM.unpinPage(pageno, false);
     }
 
     PageId getPageId() throws IOException {
