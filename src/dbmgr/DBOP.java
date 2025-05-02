@@ -17,7 +17,11 @@ public class DBOP {
 
   public static void open_databaseDBNAME(String dbName, int numPages, int numBuf) {
     String dbpath = "./dbinstance/" + dbName;
-    // Initialize DB
+    // Check if the database file already exists
+    java.io.File dbFile = new java.io.File(dbpath);
+    if (dbFile.exists()) {
+      SystemDefs.MINIBASE_RESTART_FLAG = true;
+    }
     SystemDefs sysdef = new SystemDefs(dbpath, numPages, numBuf, "Clock");
   }
 
@@ -32,14 +36,11 @@ public class DBOP {
 
   public static void cleanup(String dbName) {
 
-    String dbpath = "/tmp/" + System.getProperty("user.name") + "." + dbName;
-    String logpath = "/tmp/" + System.getProperty("user.name") + ".log";
+    String dbpath = "./dbinstance/" + dbName;
 
     String remove_cmd = "/bin/rm -rf ";
-    String remove_logcmd = remove_cmd + logpath;
     String remove_dbcmd = remove_cmd + dbpath;
     try {
-      Runtime.getRuntime().exec(remove_logcmd);
       Runtime.getRuntime().exec(remove_dbcmd);
     } catch (IOException e) {
       System.err.println("" + e);

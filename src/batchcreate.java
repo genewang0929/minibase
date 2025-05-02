@@ -25,8 +25,8 @@ public class batchcreate {
     String dataFilename = args[0];
     String relName = args[1];
 
+//    DBOP.cleanup("mydb");
     DBOP.open_databaseDBNAME("mydb", 1000, 4000);
-    DBOP.cleanup("mydb");
 
     try {
       BufferedReader br = new BufferedReader(

@@ -23,7 +23,6 @@ public class createindex {
 
     try {
       // initialize Minibase on existing DB
-      SystemDefs.MINIBASE_RESTART_FLAG = true;
       DBOP.open_databaseDBNAME("mydb", 1000, 1000);
 
       // reset I/O counters

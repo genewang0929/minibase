@@ -30,7 +30,6 @@ public class batchinsert2 {
     String updateFilename = args[0];
     String relName = args[1];
 
-    SystemDefs.MINIBASE_RESTART_FLAG = true;  // Use the existing DBMS
     DBOP.open_databaseDBNAME("mydb", 500, 1000);
 
     try {

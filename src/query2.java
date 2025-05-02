@@ -31,7 +31,6 @@ public class query2 {
     String qsName = args[2];
     int numBuf = Integer.parseInt(args[3]);
 
-    SystemDefs.MINIBASE_RESTART_FLAG = true; // Use the existing DBMS
     DBOP.open_databaseDBNAME("mydb", 1000, numBuf);
 
     // Initialize the buffer manager with NUMBUF pages.
