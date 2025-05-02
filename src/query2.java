@@ -41,9 +41,6 @@ public class query2 {
       QuerySpec qs = qs_list[0];
       QuerySpec qs2 = qs_list[1];
 
-      Vector100Dtype targetVector = readTargetVector(
-              qs.getTargetFileName()
-      );
 
       Heapfile heapFile1 = new Heapfile(relName1);
       Heapfile heapFile2 = new Heapfile(relName2);
@@ -72,6 +69,7 @@ public class query2 {
 
       if (qs2.getQueryType() != null) {
         // DJOIN operation
+        Vector100Dtype targetVector = readTargetVector(qs.getTargetFileName());
 
         // project of the first relation
         FldSpec[] proj_rel1 = new FldSpec[attrTypes1.length];
@@ -439,6 +437,8 @@ public class query2 {
       }
       else if (qs.getQueryType() == QueryType.SORT) {
         // Sort operation
+        Vector100Dtype targetVector = readTargetVector(qs.getTargetFileName());
+
         FileScan fileScan = new FileScan(
                 relName1,
                 attrTypes1,
@@ -482,17 +482,44 @@ public class query2 {
         }
         else {
           // **File Scan with Range Condition**
+
+          // Check which attribute to filter
+          int filterType = attrTypes1[qs.getQueryField() - 1].attrType;
+
+          // Read the target from the file
+          String fileName = qs.getTargetFileName();
+          if (!fileName.endsWith(".txt")) fileName += ".txt";
+          BufferedReader br = new BufferedReader(
+                  new FileReader("datafiles/phase3/" + fileName)
+          );
+          String line = br.readLine().trim();
+          br.close();
+          String token = line.split("\\s+")[0];
+
           CondExpr[] rangeCond = new CondExpr[2]; // For single condition, CondExpr[2] is usually enough, last one is null
           rangeCond[0] = new CondExpr();
           rangeCond[0].op = new AttrOperator(AttrOperator.aopEQ); // Less than or equal to range
           rangeCond[0].type1 = new AttrType(AttrType.attrSymbol);
-          rangeCond[0].type2 = new AttrType(AttrType.attrVector100D);
+          rangeCond[0].type2 = new AttrType(filterType);
           rangeCond[0].operand1.symbol = new FldSpec(
                   new RelSpec(RelSpec.outer),
                   qs.getQueryField()
           );
-          rangeCond[0].operand2.vector100D = targetVector;
-          rangeCond[0].distance = 0;
+          switch (filterType) {
+            case AttrType.attrInteger:
+              rangeCond[0].operand2.integer = Integer.parseInt(token);
+              break;
+            case AttrType.attrReal:
+              rangeCond[0].operand2.real = Float.parseFloat(token);
+              break;
+            case AttrType.attrString:
+              rangeCond[0].operand2.string = token;
+              break;
+            default:
+              throw new IllegalArgumentException("Unsupported attribute type for filtering.");
+          }
+//          rangeCond[0].operand2.vector100D = targetVector;
+//          rangeCond[0].distance = 0;
           rangeCond[1] = null; // Terminator
 
           FileScan fileScan = new FileScan(
@@ -516,6 +543,8 @@ public class query2 {
       else if (qs.getQueryType() == QueryType.RANGE) {
         // Range operation
         System.out.println("Performing Range operation...");
+
+        Vector100Dtype targetVector = readTargetVector(qs.getTargetFileName());
 
         if (qs.getUseIndex()) {
           System.out.println("Using index for range query...");
@@ -576,6 +605,8 @@ public class query2 {
       }
       else if (qs.getQueryType() == QueryType.NN) {
         // Nearest Neighbor operation
+        Vector100Dtype targetVector = readTargetVector(qs.getTargetFileName());
+
         if (qs.getUseIndex()) {
           System.out.println("Using index for NN query...");
           // initialize the index file
