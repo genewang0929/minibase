@@ -59,7 +59,7 @@ public class query2 {
       RelSpec rel = new RelSpec(RelSpec.outer);
       for (int i = 0; i < qs.getOutputFields().length; i++)
         projlist[i] =
-                new FldSpec(rel, i + 1);
+          new FldSpec(rel, i + 1);
 
       // Get output fields attributes types
       AttrType[] outAttrTypes = new AttrType[qs.getOutputFields().length];
@@ -75,8 +75,8 @@ public class query2 {
         FldSpec[] proj_rel1 = new FldSpec[attrTypes1.length];
         for (int i = 0; i < attrTypes1.length; i++) {
           proj_rel1[i] = new FldSpec(
-                  new RelSpec(RelSpec.outer),
-                  i + 1
+            new RelSpec(RelSpec.outer),
+            i + 1
           );
         }
 
@@ -84,14 +84,14 @@ public class query2 {
         FldSpec[] proj_join = new FldSpec[qs.getOutputFields().length + qs2.getOutputFields().length];
         for (int i = 0; i < qs.getOutputFields().length; i++) {
           proj_join[i] = new FldSpec(
-                  new RelSpec(RelSpec.outer),
-                  qs.getOutputFields()[i]
+            new RelSpec(RelSpec.outer),
+            qs.getOutputFields()[i]
           );
         }
         for (int i = 0; i < qs2.getOutputFields().length; i++) {
           proj_join[i + qs.getOutputFields().length] = new FldSpec(
-                  new RelSpec(RelSpec.innerRel),
-                  qs2.getOutputFields()[i]
+            new RelSpec(RelSpec.innerRel),
+            qs2.getOutputFields()[i]
           );
         }
 
@@ -201,8 +201,7 @@ public class query2 {
             //     out.print(joinAttrTypes);
             //   }
             // }
-          }
-          else {
+          } else {
             // Two FileScans: 1. Range query on first relation 2. Range query on second relation
             CondExpr[] outFilter1 = new CondExpr[2];
             outFilter1[0] = new CondExpr();
@@ -211,8 +210,8 @@ public class query2 {
             outFilter1[0].type1 = new AttrType(AttrType.attrSymbol);
             outFilter1[0].type2 = new AttrType(AttrType.attrVector100D);
             outFilter1[0].operand1.symbol = new FldSpec(
-                    new RelSpec(RelSpec.outer),
-                    qs.getQueryField()
+              new RelSpec(RelSpec.outer),
+              qs.getQueryField()
             );
             outFilter1[0].operand2.vector100D = targetVector;
             outFilter1[0].distance = qs.getThreshold();
@@ -225,12 +224,12 @@ public class query2 {
             outFilter2[0].type1 = new AttrType(AttrType.attrSymbol);
             outFilter2[0].type2 = new AttrType(AttrType.attrSymbol);
             outFilter2[0].operand1.symbol = new FldSpec(  // the first relation is outer
-                    new RelSpec(RelSpec.outer),
-                    qs.getQueryField()
+              new RelSpec(RelSpec.outer),
+              qs.getQueryField()
             );
             outFilter2[0].operand2.symbol = new FldSpec(  // the second relation is inner
-                    new RelSpec(RelSpec.innerRel),
-                    qs2.getQueryField()
+              new RelSpec(RelSpec.innerRel),
+              qs2.getQueryField()
             );
             outFilter2[0].distance = qs2.getThreshold();
             outFilter2[1] = null;
@@ -238,14 +237,14 @@ public class query2 {
             FileScan am = null;
             try {
               am = new FileScan(
-                      relName1,
-                      attrTypes1,
-                      Ssizes,
-                      (short) attrTypes1.length,
-                      attrTypes1,
-                      attrTypes1.length,
-                      proj_rel1,
-                      outFilter1
+                relName1,
+                attrTypes1,
+                Ssizes,
+                (short) attrTypes1.length,
+                attrTypes1,
+                attrTypes1.length,
+                proj_rel1,
+                outFilter1
               ); // Apply condition during scan
             } catch (Exception e) {
               e.printStackTrace();
@@ -254,10 +253,10 @@ public class query2 {
             NestedLoopsJoins inl = null;
             try {
               inl = new NestedLoopsJoins(attrTypes1, attrTypes1.length, Ssizes,
-                      attrTypes2, attrTypes2.length, Rsizes,
-                      10,
-                      am, relName2,
-                      outFilter2, null, proj_join, joinAttrTypes.length);
+                                         attrTypes2, attrTypes2.length, Rsizes,
+                                         10,
+                                         am, relName2,
+                                         outFilter2, null, proj_join, joinAttrTypes.length);
             } catch (Exception e) {
               System.err.println("*** Error preparing for nested_loop_join");
               System.err.println("" + e);
@@ -273,8 +272,7 @@ public class query2 {
             inl.close();
             am.close();
           }
-        }
-        else if (qs2.getQueryType() == QueryType.NN) {
+        } else if (qs2.getQueryType() == QueryType.NN) {
           // Nearest Neighbor operation
           System.out.println("Performing DJOIN with NN operation...");
           if (qs2.getUseIndex()) {
@@ -372,12 +370,12 @@ public class query2 {
             outFilter[0].type1 = new AttrType(AttrType.attrSymbol);
             outFilter[0].type2 = new AttrType(AttrType.attrSymbol);
             outFilter[0].operand1.symbol = new FldSpec(  // the first relation is outer
-                    new RelSpec(RelSpec.outer),
-                    qs.getQueryField()
+              new RelSpec(RelSpec.outer),
+              qs.getQueryField()
             );
             outFilter[0].operand2.symbol = new FldSpec(  // the second relation is inner
-                    new RelSpec(RelSpec.innerRel),
-                    qs2.getQueryField()
+              new RelSpec(RelSpec.innerRel),
+              qs2.getQueryField()
             );
             outFilter[0].distance = qs2.getThreshold();
             outFilter[1] = null;
@@ -387,36 +385,36 @@ public class query2 {
             order[1] = new TupleOrder(TupleOrder.Descending);
 
             FileScan am = new FileScan(
-                    relName1,
-                    attrTypes1,
-                    Ssizes,
-                    (short) attrTypes1.length,
-                    attrTypes1,
-                    attrTypes1.length,
-                    proj_rel1,
-                    null
+              relName1,
+              attrTypes1,
+              Ssizes,
+              (short) attrTypes1.length,
+              attrTypes1,
+              attrTypes1.length,
+              proj_rel1,
+              null
             );
 
             Sort sortIterator = new Sort(
-                    attrTypes1,
-                    (short) attrTypes1.length,
-                    Ssizes,
-                    am,
-                    qs.getQueryField(),
-                    order[0],
-                    32,
-                    500,
-                    targetVector,
-                    qs.getThreshold()
+              attrTypes1,
+              (short) attrTypes1.length,
+              Ssizes,
+              am,
+              qs.getQueryField(),
+              order[0],
+              32,
+              500,
+              targetVector,
+              qs.getThreshold()
             );
 
             NestedLoopsJoins inl = null;
             try {
               inl = new NestedLoopsJoins(attrTypes1, attrTypes1.length, Ssizes,
-                      attrTypes2, attrTypes2.length, Rsizes,
-                      10,
-                      sortIterator, relName2,
-                      outFilter, null, proj_join, joinAttrTypes.length);
+                                         attrTypes2, attrTypes2.length, Rsizes,
+                                         10,
+                                         sortIterator, relName2,
+                                         outFilter, null, proj_join, joinAttrTypes.length);
             } catch (Exception e) {
               System.err.println("*** Error preparing for nested_loop_join");
               System.err.println("" + e);
@@ -434,36 +432,35 @@ public class query2 {
             am.close();
           }
         }
-      }
-      else if (qs.getQueryType() == QueryType.SORT) {
+      } else if (qs.getQueryType() == QueryType.SORT) {
         // Sort operation
         Vector100Dtype targetVector = readTargetVector(qs.getTargetFileName());
 
         FileScan fileScan = new FileScan(
-                relName1,
-                attrTypes1,
-                Ssizes,
-                (short) attrTypes1.length,
-                outAttrTypes,
-                qs.getOutputFields().length,
-                projlist,
-                null
+          relName1,
+          attrTypes1,
+          Ssizes,
+          (short) attrTypes1.length,
+          outAttrTypes,
+          qs.getOutputFields().length,
+          projlist,
+          null
         );
 
         TupleOrder[] order = new TupleOrder[2];
         order[0] = new TupleOrder(TupleOrder.Ascending);
         order[1] = new TupleOrder(TupleOrder.Descending);
         Sort sortIterator = new Sort(
-                outAttrTypes,
-                (short) outAttrTypes.length,
-                Ssizes,
-                fileScan,
-                qs.getQueryField(),
-                order[0],
-                32,
-                500,
-                targetVector,
-                qs.getThreshold()
+          outAttrTypes,
+          (short) outAttrTypes.length,
+          Ssizes,
+          fileScan,
+          qs.getQueryField(),
+          order[0],
+          32,
+          500,
+          targetVector,
+          qs.getThreshold()
         );
         Tuple resultTuple;
         System.out.println("Result Tuple:");
@@ -472,15 +469,57 @@ public class query2 {
         }
         sortIterator.close();
         fileScan.close();
-      }
-      else if (qs.getQueryType() == QueryType.FILTER) {
+      } else if (qs.getQueryType() == QueryType.FILTER) {
         // Filter operation
         System.out.println("Performing Filter operation...");
 
         if (qs.getUseIndex()) {
           System.out.println("Using index for filter query...");
-        }
-        else {
+          // which field to filter on?
+          int fldno = qs.getQueryField();            // 1‑based field #
+          int atype = attrTypes1[fldno - 1].attrType; // its type
+          // read the literal value from the same file‑reading code you already have
+          String fileName = qs.getTargetFileName();
+          if (!fileName.endsWith(".txt")) fileName += ".txt";
+          BufferedReader br = new BufferedReader(
+            new FileReader("datafiles/phase3/" + fileName)
+          );
+          String token = br.readLine().trim().split("\\s+")[0];
+          br.close();
+          // build KeyClass for the index lookup
+          KeyClass lowKey;
+          switch (atype) {
+          case AttrType.attrInteger:
+            lowKey = new IntegerKey(Integer.parseInt(token)); break;
+          case AttrType.attrReal:
+            // B‑tree only supports integer keys, so cast
+            lowKey = new IntegerKey((int)Float.parseFloat(token)); break;
+          case AttrType.attrString:
+            lowKey = new StringKey(token); break;
+          default:
+            throw new IllegalArgumentException("Unsupported filter type");
+          }
+
+          // open the B‑tree index on this column
+          String idxName = relName1 + "_" + fldno;
+          BTreeFile btf = new BTreeFile(idxName);    // open existing
+
+          // do an equality scan: lo_key = hi_key = lowKey
+          BTFileScan idxScan = (BTFileScan)btf.new_scan(lowKey, lowKey);
+
+          // for each index entry, fetch the tuple from the heap and print
+          KeyDataEntry entry;
+          while ((entry = idxScan.get_next()) != null) {
+            // get the RID out of the LeafData
+            RID rid = ((LeafData)entry.data).getData();
+            // fetch the tuple            
+            Tuple t = heapFile1.getRecord(rid);
+            t.setHdr((short)attrTypes1.length, attrTypes1, Ssizes);
+            t.print(attrTypes1);
+          }
+          idxScan.DestroyBTreeFileScan();
+
+        } else {
           // **File Scan with Range Condition**
 
           // Check which attribute to filter
@@ -490,7 +529,7 @@ public class query2 {
           String fileName = qs.getTargetFileName();
           if (!fileName.endsWith(".txt")) fileName += ".txt";
           BufferedReader br = new BufferedReader(
-                  new FileReader("datafiles/phase3/" + fileName)
+            new FileReader("datafiles/phase3/" + fileName)
           );
           String line = br.readLine().trim();
           br.close();
@@ -502,35 +541,35 @@ public class query2 {
           rangeCond[0].type1 = new AttrType(AttrType.attrSymbol);
           rangeCond[0].type2 = new AttrType(filterType);
           rangeCond[0].operand1.symbol = new FldSpec(
-                  new RelSpec(RelSpec.outer),
-                  qs.getQueryField()
+            new RelSpec(RelSpec.outer),
+            qs.getQueryField()
           );
           switch (filterType) {
-            case AttrType.attrInteger:
-              rangeCond[0].operand2.integer = Integer.parseInt(token);
-              break;
-            case AttrType.attrReal:
-              rangeCond[0].operand2.real = Float.parseFloat(token);
-              break;
-            case AttrType.attrString:
-              rangeCond[0].operand2.string = token;
-              break;
-            default:
-              throw new IllegalArgumentException("Unsupported attribute type for filtering.");
+          case AttrType.attrInteger:
+            rangeCond[0].operand2.integer = Integer.parseInt(token);
+            break;
+          case AttrType.attrReal:
+            rangeCond[0].operand2.real = Float.parseFloat(token);
+            break;
+          case AttrType.attrString:
+            rangeCond[0].operand2.string = token;
+            break;
+          default:
+            throw new IllegalArgumentException("Unsupported attribute type for filtering.");
           }
 //          rangeCond[0].operand2.vector100D = targetVector;
 //          rangeCond[0].distance = 0;
           rangeCond[1] = null; // Terminator
 
           FileScan fileScan = new FileScan(
-                  relName1,
-                  attrTypes1,
-                  Ssizes,
-                  (short) attrTypes1.length,
-                  outAttrTypes,
-                  qs.getOutputFields().length,
-                  projlist,
-                  rangeCond
+            relName1,
+            attrTypes1,
+            Ssizes,
+            (short) attrTypes1.length,
+            outAttrTypes,
+            qs.getOutputFields().length,
+            projlist,
+            rangeCond
           ); // Apply condition during scan
 
           Tuple resultTuple;
@@ -539,8 +578,7 @@ public class query2 {
           }
           fileScan.close();
         }
-      }
-      else if (qs.getQueryType() == QueryType.RANGE) {
+      } else if (qs.getQueryType() == QueryType.RANGE) {
         // Range operation
         System.out.println("Performing Range operation...");
 
@@ -567,8 +605,7 @@ public class query2 {
 
             Jtuple.print(attrTypes1);
           }
-        }
-        else {
+        } else {
           System.out.println("Not using index for range query...");
 
           // **File Scan with Range Condition**
@@ -578,22 +615,22 @@ public class query2 {
           rangeCond[0].type1 = new AttrType(AttrType.attrSymbol);
           rangeCond[0].type2 = new AttrType(AttrType.attrVector100D);
           rangeCond[0].operand1.symbol = new FldSpec(
-                  new RelSpec(RelSpec.outer),
-                  qs.getQueryField()
+            new RelSpec(RelSpec.outer),
+            qs.getQueryField()
           );
           rangeCond[0].operand2.vector100D = targetVector;
           rangeCond[0].distance = qs.getThreshold(); // Set target vector for distance calculation
           rangeCond[1] = null; // Terminator
 
           FileScan fileScan = new FileScan(
-                  relName1,
-                  attrTypes1,
-                  Ssizes,
-                  (short) attrTypes1.length,
-                  outAttrTypes,
-                  qs.getOutputFields().length,
-                  projlist,
-                  rangeCond
+            relName1,
+            attrTypes1,
+            Ssizes,
+            (short) attrTypes1.length,
+            outAttrTypes,
+            qs.getOutputFields().length,
+            projlist,
+            rangeCond
           ); // Apply condition during scan
 
           Tuple resultTuple;
@@ -602,8 +639,7 @@ public class query2 {
           }
           fileScan.close();
         }
-      }
-      else if (qs.getQueryType() == QueryType.NN) {
+      } else if (qs.getQueryType() == QueryType.NN) {
         // Nearest Neighbor operation
         Vector100Dtype targetVector = readTargetVector(qs.getTargetFileName());
 
@@ -636,27 +672,27 @@ public class query2 {
           order[1] = new TupleOrder(TupleOrder.Descending);
 
           FileScan fileScan = new FileScan(
-                  relName1,
-                  attrTypes1,
-                  Ssizes,
-                  (short) attrTypes1.length,
-                  outAttrTypes,
-                  qs.getOutputFields().length,
-                  projlist,
-                  null
+            relName1,
+            attrTypes1,
+            Ssizes,
+            (short) attrTypes1.length,
+            outAttrTypes,
+            qs.getOutputFields().length,
+            projlist,
+            null
           );
 
           Sort sortIterator = new Sort(
-                  outAttrTypes,
-                  (short) outAttrTypes.length,
-                  Ssizes,
-                  fileScan,
-                  qs.getQueryField(),
-                  order[0],
-                  32,
-                  500,
-                  targetVector,
-                  qs.getThreshold()
+            outAttrTypes,
+            (short) outAttrTypes.length,
+            Ssizes,
+            fileScan,
+            qs.getQueryField(),
+            order[0],
+            32,
+            500,
+            targetVector,
+            qs.getThreshold()
           );
 
           Tuple resultTuple;
@@ -701,13 +737,12 @@ public class query2 {
         outFields[i] = Integer.parseInt(tokens[i + 3]);
       }
       qs[0].setOutputFields(outFields);
-    }
-    else if (line.startsWith("Filter(")) {
+    } else if (line.startsWith("Filter(")) {
       qs[0].setQueryType(QueryType.FILTER);
       String inside = line.substring(
-              "Filter(".length(),
-              line.length() - 1
-      );
+                        "Filter(".length(),
+                        line.length() - 1
+                      );
       String[] tokens = inside.split(",");
       for (int i = 0; i < tokens.length; i++) {
         tokens[i] = tokens[i].trim();
@@ -721,13 +756,12 @@ public class query2 {
         outFields[i] = Integer.parseInt(tokens[i + 3]);
       }
       qs[0].setOutputFields(outFields);
-    }
-    else if (line.startsWith("Range(")) {
+    } else if (line.startsWith("Range(")) {
       qs[0].setQueryType(QueryType.RANGE);
       String inside = line.substring(
-              "Range(".length(),
-              line.length() - 1
-      );
+                        "Range(".length(),
+                        line.length() - 1
+                      );
       String[] tokens = inside.split(",");
       for (int i = 0; i < tokens.length; i++) {
         tokens[i] = tokens[i].trim();
@@ -742,8 +776,7 @@ public class query2 {
         outFields[i] = Integer.parseInt(tokens[i + 4]);
       }
       qs[0].setOutputFields(outFields);
-    }
-    else if (line.startsWith("NN(")) {
+    } else if (line.startsWith("NN(")) {
       qs[0].setQueryType(QueryType.NN);
       String inside = line.substring("NN(".length(), line.length() - 1);
       String[] tokens = inside.split(",");
@@ -760,8 +793,7 @@ public class query2 {
         outFields[i] = Integer.parseInt(tokens[i + 4]);
       }
       qs[0].setOutputFields(outFields);
-    }
-    else if (line.startsWith("DJOIN(")) {
+    } else if (line.startsWith("DJOIN(")) {
       // We have 2 more lines to read
       line = br.readLine().trim();
       if (line.startsWith("Range(")) {
@@ -801,8 +833,7 @@ public class query2 {
         }
         qs[1].setOutputFields(outFields);
 
-      }
-      else if (line.startsWith("NN(")) {
+      } else if (line.startsWith("NN(")) {
         qs[0].setQueryType(QueryType.NN);
         String inside = line.substring("NN(".length(), line.length() - 2);
         String[] tokens = inside.split(",");
@@ -838,15 +869,14 @@ public class query2 {
         }
         qs[1].setOutputFields(outFields);
 
-      }
-      else {
+      } else {
         throw new IllegalArgumentException(
-                "Invalid query specification format: " + line
+          "Invalid query specification format: " + line
         );
       }
     } else {
       throw new IllegalArgumentException(
-              "Invalid query specification format: " + line
+        "Invalid query specification format: " + line
       );
     }
     br.readLine();
@@ -855,17 +885,17 @@ public class query2 {
   }
 
   private static Vector100Dtype readTargetVector(String fileName)
-          throws IOException {
+  throws IOException {
     if (!fileName.endsWith(".txt")) fileName += ".txt";
     BufferedReader br = new BufferedReader(
-            new FileReader("datafiles/phase3/" + fileName)
+      new FileReader("datafiles/phase3/" + fileName)
     );
     String line = br.readLine().trim();
     br.close();
     String[] tokens = line.split("\\s+");
     if (tokens.length != 100) {
       throw new IllegalArgumentException(
-              "Target vector file must contain 100 integers."
+        "Target vector file must contain 100 integers."
       );
     }
     short[] vector = new short[100];
