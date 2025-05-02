@@ -118,7 +118,7 @@ public class query2 {
 
             Iterator inlj;
             try {
-              inlj = DistanceJoin.djoinRange(relName1, attrTypes1, Ssizes, QA1, targetVector, D1, relName2, attrTypes2, Ssizes, QA2, D2, projlist, /*n_out_flds*/joinAttrTypes.length, numBuf);
+              inlj = DistanceJoin.djoinRange(relName1, attrTypes1, Ssizes, QA1, targetVector, D1, relName2, attrTypes2, Ssizes, QA2, D2, proj_join, /*n_out_flds*/joinAttrTypes.length, numBuf);
               Tuple resultTuple;
               System.out.println("Result Tuple:");
               while ((resultTuple = inlj.get_next()) != null) {
@@ -129,78 +129,7 @@ public class query2 {
               System.out.println("DJOIN using index failed.");
             }
 
-            // // open rel1’s LSH index
-            // LSHFIndexFile idx1 = new LSHFIndexFile(relName1 + "_" + QA1);
-            // LSHFFileScan  scan1 = new LSHFFileScan(idx1, heapFile1, targetVector);
-            // // compute the starting bit‐string key for the rel1 range
-            // KeyClass startKey1 = new IntegerKey(
-            //     Integer.parseInt(idx1.computeHash(targetVector, /*layer*/0, /*prefix*/idx1.getH()), 2));
-            // // fetch all rel1 tuples within D1 of target
-            // Tuple[] outerTuples = scan1.LSHFFileRangeScan(
-            //     startKey1, D1, attrTypes1, QA1);
-
-            // // 2) for each outer tuple, probe rel2 by LSH range on its join‐vector
-            // for (Tuple t1 : outerTuples) {
-            //   // extract the join‐vector from t1
-            //   Vector100Dtype v1 = t1.get100DVectFld(QA1);
-            //   // open rel2’s LSH index
-            //   LSHFIndexFile idx2 = new LSHFIndexFile(relName2 + "_" + QA2);
-            //   LSHFFileScan  scan2 = new LSHFFileScan(idx2, heapFile2, v1);
-            //   KeyClass startKey2 = new IntegerKey(
-            //       Integer.parseInt(idx2.computeHash(v1,0,idx2.getH()),2));
-            //   // fetch rel2 tuples whose vector is within D2 of v1
-            //   Tuple[] innerTuples = scan2.LSHFFileRangeScan(
-            //       startKey2, D2, attrTypes2, QA2);
-
-            //   // 3) join each matching inner tuple with t1 and output
-            //   for (Tuple t2 : innerTuples) {
-            //     Tuple out = new Tuple();
-            //     // out.setHdr((short)joinAttrTypes.length, joinAttrTypes, /* string sizes */ Ssizes);
-            //     // 1) build the strSizes array for the joined tuple:
-            //     short[] joinStrSizes = new short[joinAttrTypes.length];
-            //     {
-            //       // first fill from relation1’s string‐sizes
-            //       int si = 0, di = 0;
-            //       for(int i = 0; i < joinAttrTypes.length; i++){
-            //         if (i < attrTypes1.length) {
-            //           // if it’s a string in relation1:
-            //           if (attrTypes1[i].attrType == AttrType.attrString)
-            //             joinStrSizes[i] = Ssizes[si++];
-            //           else
-            //             joinStrSizes[i] = 0;
-            //         } else {
-            //           // inner relation’s tail
-            //           int j = i - attrTypes1.length;
-            //           if (attrTypes2[j].attrType == AttrType.attrString)
-            //             joinStrSizes[i] = Rsizes[di++];
-            //           else
-            //             joinStrSizes[i] = 0;
-            //         }
-            //       }
-            //     }
-
-            //     // 2) initialize the header of the output tuple
-            //     out.setHdr((short)joinAttrTypes.length, joinAttrTypes, joinStrSizes);
-
-            //     // 3) now call Join with exactly six arguments:
-            //     try {
-            //       Projection.Join(
-            //           t1,            // outer tuple
-            //           attrTypes1,    // its types
-            //           t2,            // inner tuple
-            //           attrTypes2,    // its types
-            //           out,           // the Jtuple to receive the join result
-            //           proj_join,     // the FldSpec[] describing where each field goes
-            //           proj_join.length
-            //       );
-            //     } catch (Exception e) {
-            //       System.out.println("Join failed");
-            //     }
-
-            //     // 4) now out.print(joinAttrTypes) or otherwise consume ‘out’
-            //     out.print(joinAttrTypes);
-            //   }
-            // }
+            
           } else {
             // Two FileScans: 1. Range query on first relation 2. Range query on second relation
             CondExpr[] outFilter1 = new CondExpr[2];
@@ -284,83 +213,19 @@ public class query2 {
 
             Iterator inlj;
             try {
-              inlj = DistanceJoin.djoinNN(relName1, attrTypes1, Ssizes, QA1, targetVector, K1, relName2, attrTypes2, Ssizes, QA2, D2, projlist, /*n_out_flds*/joinAttrTypes.length, numBuf);
+              inlj = DistanceJoin.djoinNN(relName1, attrTypes1, Ssizes, QA1, targetVector, K1, relName2, attrTypes2, Ssizes, QA2, D2, proj_join, /*n_out_flds*/joinAttrTypes.length, numBuf);
               Tuple resultTuple;
               System.out.println("Result Tuple:");
               while ((resultTuple = inlj.get_next()) != null) {
                 resultTuple.print(joinAttrTypes);
               }
+              System.out.println("get_next done.");
               inlj.close();
             } catch (Exception e) {
               System.out.println("DJOIN using index failed.");
             }
 
-            // // 1) get top‐K rel1 tuples nearest target
-            // LSHFIndexFile idx1 = new LSHFIndexFile(relName1 + "_" + QA1);
-            // LSHFFileScan  scan1 = new LSHFFileScan(idx1, heapFile1, targetVector);
-            // KeyClass startKey1 = new IntegerKey(
-            //     Integer.parseInt(idx1.computeHash(targetVector,0,idx1.getH()),2));
-            // Tuple[] outerTuples = scan1.LSHFFileNNScan(
-            //     startKey1, K1, attrTypes1, QA1);
-
-            // // 2) for each outer, do LSH range on rel2
-            // for (Tuple t1 : outerTuples) {
-            //   Vector100Dtype v1 = t1.get100DVectFld(QA1);
-            //   LSHFIndexFile idx2 = new LSHFIndexFile(relName2 + "_" + QA2);
-            //   LSHFFileScan  scan2 = new LSHFFileScan(idx2, heapFile2, v1);
-            //   KeyClass startKey2 = new IntegerKey(
-            //       Integer.parseInt(idx2.computeHash(v1,0,idx2.getH()),2));
-            //   Tuple[] innerTuples = scan2.LSHFFileRangeScan(
-            //       startKey2, D2, attrTypes2, QA2);
-
-            //   for (Tuple t2 : innerTuples) {
-            //     Tuple out = new Tuple();
-            //     // 1) build the strSizes array for the joined tuple:
-            //     short[] joinStrSizes = new short[joinAttrTypes.length];
-            //     {
-            //       // first fill from relation1’s string‐sizes
-            //       int si = 0, di = 0;
-            //       for(int i = 0; i < joinAttrTypes.length; i++){
-            //         if (i < attrTypes1.length) {
-            //           // if it’s a string in relation1:
-            //           if (attrTypes1[i].attrType == AttrType.attrString)
-            //             joinStrSizes[i] = Ssizes[si++];
-            //           else
-            //             joinStrSizes[i] = 0;
-            //         } else {
-            //           // inner relation’s tail
-            //           int j = i - attrTypes1.length;
-            //           if (attrTypes2[j].attrType == AttrType.attrString)
-            //             joinStrSizes[i] = Rsizes[di++];
-            //           else
-            //             joinStrSizes[i] = 0;
-            //         }
-            //       }
-            //     }
-
-            //     // 2) initialize the header of the output tuple
-            //     out.setHdr((short)joinAttrTypes.length, joinAttrTypes, joinStrSizes);
-
-            //     // 3) now call Join with exactly six arguments:
-            //     try {
-            //       Projection.Join(
-            //           t1,            // outer tuple
-            //           attrTypes1,    // its types
-            //           t2,            // inner tuple
-            //           attrTypes2,    // its types
-            //           out,           // the Jtuple to receive the join result
-            //           proj_join,     // the FldSpec[] describing where each field goes
-            //           proj_join.length
-            //       );
-            //     } catch (Exception e) {
-            //       System.out.println("Join failed");
-            //     }
-
-            //     // 4) now out.print(joinAttrTypes) or otherwise consume ‘out’
-            //     out.print(joinAttrTypes);
-
-            //   }
-            // }
+            
           } else {
             System.out.println("Not using index for DJOIN query...");
             CondExpr[] outFilter = new CondExpr[2];
@@ -434,41 +299,105 @@ public class query2 {
         }
       } else if (qs.getQueryType() == QueryType.SORT) {
         // Sort operation
-        Vector100Dtype targetVector = readTargetVector(qs.getTargetFileName());
+        // Vector100Dtype targetVector = readTargetVector(qs.getTargetFileName());
 
-        FileScan fileScan = new FileScan(
+        // FileScan fileScan = new FileScan(
+        //   relName1,
+        //   attrTypes1,
+        //   Ssizes,
+        //   (short) attrTypes1.length,
+        //   outAttrTypes,
+        //   qs.getOutputFields().length,
+        //   projlist,
+        //   null
+        // );
+
+        // TupleOrder[] order = new TupleOrder[2];
+        // order[0] = new TupleOrder(TupleOrder.Ascending);
+        // order[1] = new TupleOrder(TupleOrder.Descending);
+        // Sort sortIterator = new Sort(
+        //   outAttrTypes,
+        //   (short) outAttrTypes.length,
+        //   Ssizes,
+        //   fileScan,
+        //   qs.getQueryField(),
+        //   order[0],
+        //   32,
+        //   500,
+        //   targetVector,
+        //   qs.getThreshold()
+        // );
+        // Tuple resultTuple;
+        // System.out.println("Result Tuple:");
+        // while ((resultTuple = sortIterator.get_next()) != null) {
+        //   resultTuple.print(outAttrTypes);
+        // }
+        // sortIterator.close();
+        // fileScan.close();
+
+        System.out.println("Performing SORT operation...");
+
+        // 1) scan the original file
+        FileScan scan = new FileScan(
           relName1,
-          attrTypes1,
-          Ssizes,
-          (short) attrTypes1.length,
-          outAttrTypes,
-          qs.getOutputFields().length,
+          attrTypes1, Ssizes, (short)attrTypes1.length,
+          outAttrTypes, qs.getOutputFields().length,
           projlist,
           null
         );
 
-        TupleOrder[] order = new TupleOrder[2];
-        order[0] = new TupleOrder(TupleOrder.Ascending);
-        order[1] = new TupleOrder(TupleOrder.Descending);
-        Sort sortIterator = new Sort(
-          outAttrTypes,
-          (short) outAttrTypes.length,
-          Ssizes,
-          fileScan,
+        // 2) create a new heapfile for the sorted output
+        String sortedName = relName1 + "_sorted";
+        Heapfile sortedHF = new Heapfile(sortedName);
+
+        // 3) build the Sort operator (external merge sort, uses at most numBuf pages)
+        Sort sorter = new Sort(
+          outAttrTypes, (short)outAttrTypes.length, Ssizes,
+          scan,
           qs.getQueryField(),
-          order[0],
-          32,
-          500,
-          targetVector,
+          new TupleOrder(TupleOrder.Ascending),
+          /*sortFldLen*/100,      // vector‐length
+          /*n_pages*/ numBuf,
+          readTargetVector(qs.getTargetFileName()),
           qs.getThreshold()
         );
-        Tuple resultTuple;
-        System.out.println("Result Tuple:");
-        while ((resultTuple = sortIterator.get_next()) != null) {
-          resultTuple.print(outAttrTypes);
+        // Sort sortIterator = new Sort(
+        //   outAttrTypes,
+        //   (short) outAttrTypes.length,
+        //   Ssizes,
+        //   fileScan,
+        //   qs.getQueryField(),
+        //   order[0],
+        //   32,
+        //   500,
+        //   targetVector,
+        //   qs.getThreshold()
+        // );
+
+        // 4) pull sorted tuples out one by one and write them to sortedHF,
+        //    unpinning each page as soon as we dirty it.
+        Tuple t;
+        while ((t = sorter.get_next()) != null) {
+          t.setHdr((short)outAttrTypes.length, outAttrTypes, Ssizes);
+          byte[] rec = t.getTupleByteArray();
+          RID rid = sortedHF.insertRecord(rec);
+          // immediately unpin the data page we just wrote to:
+          SystemDefs.JavabaseBM.unpinPage(rid.pageNo, true);
         }
-        sortIterator.close();
-        fileScan.close();
+
+        // 5) clean up
+        sorter.close();
+        scan.close();
+        // sortedHF.close();
+
+        // 6) also unpin and flush the sorted file’s header page
+        // PageId hdr = sortedHF.getHeaderPage().getCurPage();
+        // SystemDefs.JavabaseBM.unpinPage(hdr, true);
+
+        // 7) force all dirty pages to disk
+        // SystemDefs.JavabaseBM.flushAllPages();
+
+        System.out.println("Sorted data written to heapfile: " + sortedName);
       } else if (qs.getQueryType() == QueryType.FILTER) {
         // Filter operation
         System.out.println("Performing Filter operation...");
@@ -512,7 +441,7 @@ public class query2 {
           while ((entry = idxScan.get_next()) != null) {
             // get the RID out of the LeafData
             RID rid = ((LeafData)entry.data).getData();
-            // fetch the tuple            
+            // fetch the tuple
             Tuple t = heapFile1.getRecord(rid);
             t.setHdr((short)attrTypes1.length, attrTypes1, Ssizes);
             t.print(attrTypes1);
