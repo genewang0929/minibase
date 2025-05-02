@@ -65,17 +65,19 @@ public class DistanceJoin {
     }
 
     // 3) build join condition
-    CondExpr[] outFilter   = null;           // no extra outer filter
-    CondExpr[] rightFilter = new CondExpr[1];
+    CondExpr[] rightFilter   = null;           // no extra outer filter
+    CondExpr[] outFilter = new CondExpr[2];
     CondExpr ce = new CondExpr();
+    ce.next = null;
     ce.op        = new AttrOperator(AttrOperator.aopLE);
-    ce.type1     = new AttrType(AttrType.attrVector100D);
-    ce.type2     = new AttrType(AttrType.attrVector100D);
+    ce.type1     = new AttrType(AttrType.attrSymbol);
+    ce.type2     = new AttrType(AttrType.attrSymbol);
 
     ce.operand2.symbol = new FldSpec(new RelSpec(RelSpec.innerRel), QA2);
     ce.operand1.symbol = new FldSpec(new RelSpec(RelSpec.outer),   QA1);
     ce.distance = D2;
-    rightFilter[0] = ce;
+    outFilter[0] = ce;
+    outFilter[1] = null;
 
     // 4) pick index type
     IndexType idxType = new IndexType(IndexType.LSHFIndex);

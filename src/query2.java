@@ -126,6 +126,7 @@ public class query2 {
               }
               inlj.close();
             } catch (Exception e) {
+              e.printStackTrace();
               System.out.println("DJOIN using index failed.");
             }
 
@@ -222,6 +223,7 @@ public class query2 {
               System.out.println("get_next done.");
               inlj.close();
             } catch (Exception e) {
+              e.printStackTrace();
               System.out.println("DJOIN using index failed.");
             }
 

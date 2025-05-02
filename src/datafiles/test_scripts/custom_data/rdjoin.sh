@@ -18,7 +18,7 @@ java batchcreate ./datafiles/phase3/custom_data/insert_table2_for_djquery.txt ta
 
 echo '--------------------------------'
 echo "Create Index on table1"
-java createindex table1 2 2 3
+java createindex table1 4 2 3
 
 echo '--------------------------------'
 echo "Performing Range DJoin Query"
