@@ -1,13 +1,9 @@
 package iterator;
 
+import btree.*;
 import global.*;
 import heap.*;
-import btree.*;
 import lshfindex.*;
-import lshfindex.LSHFIndexFile;
-
-import java.io.*;
-import java.util.*;
 
 /**
  * A little Iterator that returns the contents of a Tuple[].
@@ -57,8 +53,16 @@ public class DistanceJoin {
     KeyClass startKey = new Vector100DKey(bit);
     Tuple[] outerTuples = scan1.LSHFFileRangeScan(startKey, D2, type1, QA1);
 
+    if (DEBUG) {
+      System.out.println("[DistanceJoin] range scan has been done.");
+    }
+
     // 2) wrap as Iterator
     TupleArrayIterator outerIter = new TupleArrayIterator(type1, ss1, outerTuples);
+
+    if (DEBUG) {
+      System.out.println("[DistanceJoin] outerIter has been set.");
+    }
 
     // 3) build join condition
     CondExpr[] outFilter   = null;           // no extra outer filter
@@ -82,14 +86,26 @@ public class DistanceJoin {
     }
 
     // 5) return an Index‐Nested‐Loop Join
-    return new INLJoins(
+    // return new INLJoins(
+    //   type1, type1.length, ss1,
+    //   type2, type2.length, ss2,
+    //   amt_of_mem,
+    //   outerIter,
+    //   rel2,
+    //   idxType,
+    //   idxName,
+    //   outFilter,
+    //   rightFilter,
+    //   proj_list,
+    //   n_out_flds
+    // );
+
+    return new NestedLoopsJoins(
       type1, type1.length, ss1,
       type2, type2.length, ss2,
       amt_of_mem,
       outerIter,
       rel2,
-      idxType,
-      idxName,
       outFilter,
       rightFilter,
       proj_list,
@@ -152,5 +168,17 @@ public class DistanceJoin {
       proj_list,
       n_out_flds
     );
+
+    // return new NestedLoopsJoins(
+    //   type1, type1.length, ss1,
+    //   type2, type2.length, ss2,
+    //   amt_of_mem,
+    //   outerIter,
+    //   rel2,
+    //   outFilter,
+    //   rightFilter,
+    //   proj_list,
+    //   n_out_flds
+    // );
   }
 }

@@ -107,16 +107,37 @@ public class INLJoins extends Iterator {
 
     if (DEBUG) {
       System.out.println("[INLJoins] index file opened.");
-      // System.out.println("[INLJoins] _in1: " + _in1 + ", len1: " + _len1);
-      // System.out.println("[INLJoins] _in1: " + _in2 + ", len1: " + _len2);
-      // System.out.println("[INLJoins] _s1: " + _s1 + ", s2: " + _s2);
-      // System.out.println("[INLJoins] _in1: " + _in2 + ", len1: " + _len2);
+      System.out.println("[INLJoins] _in1: " + _in1 + ", len1: " + _len1);
+      for (int i = 0; i < _in1.length; i++) {
+        System.out.print(_in1[i] + ", ");
+      }
+      System.out.println("\n[INLJoins] _in2: " + _in2 + ", len2: " + _len2);
+      for (int i = 0; i < _in2.length; i++) {
+        System.out.print(_in2[i] + ", ");
+      }
+      System.out.println("\n[INLJoins] _s1: " + _s1 + ", s2: " + _s2);
+      for (int i = 0; i < _s1.length; i++) {
+        System.out.print(_s1[i] + ", ");
+      }
+      for (int i = 0; i < _s2.length; i++) {
+        System.out.print(_s2[i] + ", ");
+      }
+      System.out.println("");
     }
+
+    System.out.println("[DEBUG] n_out_flds = " + _nOutFlds);
+    for (int i = 0; i < _projList.length; i++) {
+      System.out.println("[DEBUG] proj_list[" + i + "]: relation = " +
+        _projList[i].relation.key + ", offset = " + _projList[i].offset);
+    }
+
 
     // build result tuple header
     _resultTuple = new Tuple();
     AttrType[] resultAttrs = new AttrType[_nOutFlds];
-    short[] resultStrSizes = TupleUtils.setup_op_tuple(
+    short[] resultStrSizes;
+    try {
+      resultStrSizes = TupleUtils.setup_op_tuple(
         _resultTuple,
         resultAttrs,
         _in1, _len1,
@@ -124,13 +145,33 @@ public class INLJoins extends Iterator {
         _s1, _s2,
         _projList,
         _nOutFlds
-    );
-
-    if (DEBUG) {
-      System.out.println("[INLJoins] setup_op_tuple succeeded.");
+      );
+      if (DEBUG) {
+        System.out.println("[INLJoins] setup_op_tuple succeeded.");
+      }
+  
+      _resultTuple.setHdr((short)_nOutFlds, resultAttrs, resultStrSizes);
+  
+    } catch (Exception e) {
+      e.printStackTrace();
+      System.out.println("Likely due to invalid proj_list or attribute types.");
     }
+    
+    // short[] resultStrSizes = TupleUtils.setup_op_tuple(
+    //     _resultTuple,
+    //     resultAttrs,
+    //     _in1, _len1,
+    //     _in2, _len2,
+    //     _s1, _s2,
+    //     _projList,
+    //     _nOutFlds
+    // );
 
-    _resultTuple.setHdr((short)_nOutFlds, resultAttrs, resultStrSizes);
+    // if (DEBUG) {
+    //   System.out.println("[INLJoins] setup_op_tuple succeeded.");
+    // }
+
+    // _resultTuple.setHdr((short)_nOutFlds, resultAttrs, resultStrSizes);
 
     if (DEBUG) {
       System.out.println("[INLJoins] setHdr succeeded.");
