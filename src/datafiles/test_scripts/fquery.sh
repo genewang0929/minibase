@@ -1,6 +1,6 @@
 echo '--------------------------------'
 echo "Go to src directory"
-cd ../../../
+cd ../../
 
 echo '--------------------------------'
 echo "Compiling Java files"
@@ -13,7 +13,7 @@ rm ./dbinstance/mydb
 
 echo '--------------------------------'
 echo "Creating database mydb, table1"
-java batchcreate ./datafiles/phase3/custom_data/create_for_delete_1.txt table1
+java batchcreate ./datafiles/phase3/data_1.txt table1
 
 echo '--------------------------------'
 echo "Create Index on table1"
@@ -21,4 +21,4 @@ java createindex table1 3 2 3
 
 echo '--------------------------------'
 echo "Performing Filter Query"
-java query2 table1 table2 ./datafiles/phase3/custom_data/fquery1.txt 1000
+java query2 table1 table2 ./datafiles/phase3/fquery1.txt 1000

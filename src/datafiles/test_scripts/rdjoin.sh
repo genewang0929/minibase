@@ -17,8 +17,9 @@ java batchcreate ./datafiles/phase3/data_1.txt table1
 java batchcreate ./datafiles/phase3/data_2.txt table2
 
 echo '--------------------------------'
-echo "Create Index on table1"
-java createindex table1 2 2 3
+echo "Create Index on table1, table2"
+java createindex table1 4 2 3
+java createindex table2 2 2 3
 
 echo '--------------------------------'
 echo "Performing Range DJoin Query"
