@@ -106,8 +106,12 @@ public class query2 {
         if (qs2.getQueryType() == QueryType.RANGE) {
           // Range operation
           System.out.println("Performing DJOIN with RANGE operation...");
-          if (qs2.getUseIndex()) {
-            System.out.println("Using index for DJOIN query...");
+          if (qs.getUseIndex() && qs2.getUseIndex()) {
+            System.out.println("Using index for DJOIN first query, using index for DJOIN second query...");
+
+          }
+          else if (qs.getUseIndex() && !qs2.getUseIndex()) {
+            System.out.println("Using index for DJOIN first query, not using index for DJOIN second query...");
             //
             // 1) build and run the LSH range scan on rel1 to get outer tuples
             //
@@ -118,7 +122,7 @@ public class query2 {
 
             Iterator inlj;
             try {
-              inlj = DistanceJoin.djoinRange(relName1, attrTypes1, Ssizes, QA1, targetVector, D1, relName2, attrTypes2, Ssizes, QA2, D2, proj_join, /*n_out_flds*/joinAttrTypes.length, numBuf);
+              inlj = DistanceJoin.djoinRangeNLJ(relName1, attrTypes1, Ssizes, QA1, targetVector, D1, relName2, attrTypes2, Ssizes, QA2, D2, proj_join, /*n_out_flds*/joinAttrTypes.length, numBuf);
               Tuple resultTuple;
               System.out.println("Result Tuple:");
               while ((resultTuple = inlj.get_next()) != null) {
@@ -129,9 +133,13 @@ public class query2 {
               e.printStackTrace();
               System.out.println("DJOIN using index failed.");
             }
+          }
+          else if (!qs.getUseIndex() && qs2.getUseIndex()) {
+            System.out.println("Not using index for DJOIN first query, using index for DJOIN second query...");
 
-            
-          } else {
+          }
+          else {
+            System.out.println("Not using index for DJOIN first query, not using index for DJOIN second query...");
             // Two FileScans: 1. Range query on first relation 2. Range query on second relation
             CondExpr[] outFilter1 = new CondExpr[2];
             outFilter1[0] = new CondExpr();
@@ -205,8 +213,8 @@ public class query2 {
         } else if (qs2.getQueryType() == QueryType.NN) {
           // Nearest Neighbor operation
           System.out.println("Performing DJOIN with NN operation...");
-          if (qs2.getUseIndex()) {
-            System.out.println("Using index for DJOIN query...");
+          if (qs.getUseIndex() && qs2.getUseIndex()) {
+            System.out.println("Using index for DJOIN query on first query, using index for DJOIN query on second query...");
             int QA1 = qs.getQueryField();
             int QA2 = qs2.getQueryField();
             int K1  = qs.getThreshold();      // top‐K on rel1
@@ -214,7 +222,7 @@ public class query2 {
 
             Iterator inlj;
             try {
-              inlj = DistanceJoin.djoinNN(relName1, attrTypes1, Ssizes, QA1, targetVector, K1, relName2, attrTypes2, Ssizes, QA2, D2, proj_join, /*n_out_flds*/joinAttrTypes.length, numBuf);
+              inlj = DistanceJoin.djoinNNINLJ(relName1, attrTypes1, Ssizes, QA1, targetVector, K1, relName2, attrTypes2, Ssizes, QA2, D2, proj_join, /*n_out_flds*/joinAttrTypes.length, numBuf);
               Tuple resultTuple;
               System.out.println("Result Tuple:");
               while ((resultTuple = inlj.get_next()) != null) {
@@ -226,10 +234,34 @@ public class query2 {
               e.printStackTrace();
               System.out.println("DJOIN using index failed.");
             }
+          }
+          else if (qs.getUseIndex() && !qs2.getUseIndex()) {
+            System.out.println("Using index for DJOIN query on first query, not using index for DJOIN query on second query...");
+            int QA1 = qs.getQueryField();
+            int QA2 = qs2.getQueryField();
+            int K1  = qs.getThreshold();      // top‐K on rel1
+            int D2  = qs2.getThreshold(); // join threshold
 
-            
-          } else {
-            System.out.println("Not using index for DJOIN query...");
+            Iterator inlj;
+            try {
+              inlj = DistanceJoin.djoinNNNLJ(relName1, attrTypes1, Ssizes, QA1, targetVector, K1, relName2, attrTypes2, Ssizes, QA2, D2, proj_join, /*n_out_flds*/joinAttrTypes.length, numBuf);
+              Tuple resultTuple;
+              System.out.println("Result Tuple:");
+              while ((resultTuple = inlj.get_next()) != null) {
+                resultTuple.print(joinAttrTypes);
+              }
+              System.out.println("get_next done.");
+              inlj.close();
+            } catch (Exception e) {
+              e.printStackTrace();
+              System.out.println("DJOIN using index failed.");
+            }
+          }
+          else if (!qs.getUseIndex() && qs2.getUseIndex()) {
+            System.out.println("Not using index for DJOIN query on first query, using index for DJOIN query on second query...");
+          }
+          else {
+            System.out.println("Not using index for DJOIN query on first query, not using index for DJOIN query on second query...");
             CondExpr[] outFilter = new CondExpr[2];
             outFilter[0] = new CondExpr();
             outFilter[0].next = null;

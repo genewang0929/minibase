@@ -36,7 +36,7 @@ public class DistanceJoin {
   /**
    * DJOIN1: join Range‐query(R1) with R2 by distance ≤ D2 on (QA1,QA2).
    */
-  public static Iterator djoinRange(
+  public static Iterator djoinRangeNLJ(
       String rel1, AttrType[] type1, short[] ss1,
       int QA1, Vector100Dtype T1, int D1,
       String rel2, AttrType[] type2, short[] ss2,
@@ -115,10 +115,63 @@ public class DistanceJoin {
     );
   }
 
+  public static Iterator djoinNNNLJ(
+          String rel1, AttrType[] type1, short[] ss1,
+          int QA1, Vector100Dtype T1, int K1,
+          String rel2, AttrType[] type2, short[] ss2,
+          int QA2, int D2,
+          FldSpec[] proj_list, int n_out_flds,
+          int amt_of_mem
+  ) throws Exception {
+
+    // 1) LSH‐kNN‐scan on R1
+    Heapfile hf1 = new Heapfile(rel1);
+    LSHFIndexFile lshIndex1 = new LSHFIndexFile(rel1 + "_" + QA1);
+    LSHFFileScan scan1 = new LSHFFileScan(lshIndex1, hf1, T1);
+    String bit = lshIndex1.computeHash(T1, /*layer*/0, /*prefix*/lshIndex1.getH());
+    KeyClass startKey = new Vector100DKey(bit);
+    Tuple[] outerTuples = scan1.LSHFFileNNScan(startKey, K1, type1, QA1);
+
+    // 2) wrap as Iterator
+    TupleArrayIterator outerIter = new TupleArrayIterator(type1, ss1, outerTuples);
+
+    // 3) build join condition
+    CondExpr[] rightFilter   = null;
+    CondExpr[] outFilter = new CondExpr[2];
+    CondExpr ce = new CondExpr();
+    ce.op        = new AttrOperator(AttrOperator.aopLE);
+    ce.type1     = new AttrType(AttrType.attrSymbol);
+    ce.type2     = new AttrType(AttrType.attrSymbol);
+    ce.operand2.symbol = new FldSpec(new RelSpec(RelSpec.innerRel), QA2);
+    ce.operand1.symbol = new FldSpec(new RelSpec(RelSpec.outer),   QA1);
+    ce.distance = D2;
+    outFilter[0] = ce;
+    outFilter[1] = null;
+
+    IndexType idxType = new IndexType(IndexType.B_Index);
+    String idxName   = rel1 + "_" + QA1;
+
+    if (DEBUG) {
+      System.out.println("[DistanceJoin] ready to return.");
+    }
+
+    return new NestedLoopsJoins(
+            type1, type1.length, ss1,
+            type2, type2.length, ss2,
+            amt_of_mem,
+            outerIter,
+            rel2,
+            outFilter,
+            rightFilter,
+            proj_list,
+            n_out_flds
+    );
+  }
+
   /**
    * DJOIN2: join kNN‐query(R1) with R2 by distance ≤ D2 on (QA1,QA2).
    */
-  public static Iterator djoinNN(
+  public static Iterator djoinNNINLJ(
       String rel1, AttrType[] type1, short[] ss1,
       int QA1, Vector100Dtype T1, int K1,
       String rel2, AttrType[] type2, short[] ss2,
