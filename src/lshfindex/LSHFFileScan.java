@@ -140,7 +140,7 @@ public class LSHFFileScan /*extends IndexFileScan*/ implements GlobalConst {
                 }
             }
             if (DEBUG) {
-                System.out.println("[LSHFFileRangeScan] total scanned: " + totalCount +
+                System.out.println("[LSHFFileRangeScan] dist threshold: " + distanceThreshold + ", total scanned: " + totalCount +
                                    ", within threshold: " + allCandidates.size());
             }
             // If at least 70% of total scanned candidates satisfy the threshold, we stop.
@@ -149,6 +149,11 @@ public class LSHFFileScan /*extends IndexFileScan*/ implements GlobalConst {
                 foundSatisfactory = true;
             } else {
                 ignoreBits++; // Widen the range by ignoring one more bit.
+                if (ignoreBits > bitStr.length()) {
+                    resultCandidates.addAll(allCandidates);
+                    foundSatisfactory = true;
+                    break;
+                }
             }
         }
         return resultCandidates.toArray(new Tuple[0]);
@@ -263,7 +268,7 @@ public class LSHFFileScan /*extends IndexFileScan*/ implements GlobalConst {
         RID rid = ((LeafData)entry.data).getData();
         // RID rid = (entry.data).getData();
         try {
-            System.out.println("RID of tuple" + rid.toString());
+            // System.out.println("RID of tuple" + rid.toString());
             return dataHeapFile.getRecord(rid);
         } catch (Exception e) {
             throw new ScanIteratorException(e, "Error fetching tuple for RID: " + rid);
