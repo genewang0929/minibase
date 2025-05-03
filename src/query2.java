@@ -53,7 +53,15 @@ public class query2 {
       Rsizes[0] = 15;
 
       attrTypes1 = loadAttrTypes(relName1);
+      System.out.println("attrTypes1 check:");
+      for (int i = 0; i < attrTypes1.length; i++) {
+        System.out.println(attrTypes1[i]);
+      }
       attrTypes2 = loadAttrTypes(relName2);
+      System.out.println("attrTypes2 check:");
+      for (int i = 0; i < attrTypes2.length; i++) {
+        System.out.println(attrTypes2[i]);
+      }
 
       FldSpec[] projlist = new FldSpec[qs.getOutputFields().length];
       RelSpec rel = new RelSpec(RelSpec.outer);
@@ -109,8 +117,50 @@ public class query2 {
           if (qs.getUseIndex() && qs2.getUseIndex()) {
             System.out.println("Using index for DJOIN first query, using index for DJOIN second query...");
 
-          }
-          else if (qs.getUseIndex() && !qs2.getUseIndex()) {
+            //
+            // 1) build and run the LSH range scan on rel1 to get outer tuples
+            //
+            int QA1 = qs.getQueryField();        // outer join column
+            int QA2 = qs2.getQueryField();       // inner join column
+            int D1  = qs2.getThreshold();    // range for rel1
+            int D2  = qs2.getThreshold();     // join‐distance threshold
+
+            // open rel1’s LSH index
+            LSHFIndexFile idx1 = new LSHFIndexFile(relName1 + "_" + QA1);
+            LSHFFileScan  scan1 = new LSHFFileScan(idx1, heapFile1, targetVector);
+            // compute the starting bit‐string key for the rel1 range
+            KeyClass startKey1 = new Vector100DKey(idx1.computeHash(targetVector, 0, idx1.getH()));
+            // fetch all rel1 tuples within D1 of target
+            Tuple[] outerTuples = scan1.LSHFFileRangeScan(
+                                    startKey1, D1, attrTypes1, QA1);
+            System.out.println("outer scan done. outer tuple number: " + outerTuples.length);
+
+            // 2) for each outer tuple, probe rel2 by LSH range on its join‐vector
+            for (Tuple t1 : outerTuples) {
+              // extract the join‐vector from t1
+              Vector100Dtype v1 = t1.get100DVectFld(QA1);
+              // open rel2’s LSH index
+              LSHFIndexFile idx2 = new LSHFIndexFile(relName2 + "_" + QA2);
+              LSHFFileScan  scan2 = new LSHFFileScan(idx2, heapFile2, v1);
+              KeyClass startKey2 = new Vector100DKey(idx2.computeHash(v1, 0, idx2.getH()));
+              // fetch rel2 tuples whose vector is within D2 of v1
+              System.out.println("start inner scan.");
+              Tuple[] innerTuples = scan2.LSHFFileRangeScan(
+                                      startKey2, D2, attrTypes2, QA2);
+
+              // 3) join each matching inner tuple with t1 and output
+              System.out.println("Range DJOIN result:");
+              for (Tuple t2 : innerTuples) {
+                Tuple out = new Tuple();
+                out.setHdr((short)joinAttrTypes.length, joinAttrTypes, /* string sizes */ Ssizes);
+                Projection.Join(
+                  t1, attrTypes1,
+                  t2, attrTypes2,
+                  out, proj_join, proj_join.length);
+                out.print(joinAttrTypes);
+              }
+            }
+          } else if (qs.getUseIndex() && !qs2.getUseIndex()) {
             System.out.println("Using index for DJOIN first query, not using index for DJOIN second query...");
             //
             // 1) build and run the LSH range scan on rel1 to get outer tuples
@@ -133,12 +183,10 @@ public class query2 {
               e.printStackTrace();
               System.out.println("DJOIN using index failed.");
             }
-          }
-          else if (!qs.getUseIndex() && qs2.getUseIndex()) {
+          } else if (!qs.getUseIndex() && qs2.getUseIndex()) {
             System.out.println("Not using index for DJOIN first query, using index for DJOIN second query...");
 
-          }
-          else {
+          } else {
             System.out.println("Not using index for DJOIN first query, not using index for DJOIN second query...");
             // Two FileScans: 1. Range query on first relation 2. Range query on second relation
             CondExpr[] outFilter1 = new CondExpr[2];
@@ -220,22 +268,52 @@ public class query2 {
             int K1  = qs.getThreshold();      // top‐K on rel1
             int D2  = qs2.getThreshold(); // join threshold
 
-            Iterator inlj;
-            try {
-              inlj = DistanceJoin.djoinNNINLJ(relName1, attrTypes1, Ssizes, QA1, targetVector, K1, relName2, attrTypes2, Ssizes, QA2, D2, proj_join, /*n_out_flds*/joinAttrTypes.length, numBuf);
-              Tuple resultTuple;
-              System.out.println("Result Tuple:");
-              while ((resultTuple = inlj.get_next()) != null) {
-                resultTuple.print(joinAttrTypes);
+            // Iterator inlj;
+            // try {
+            //   inlj = DistanceJoin.djoinNNINLJ(relName1, attrTypes1, Ssizes, QA1, targetVector, K1, relName2, attrTypes2, Ssizes, QA2, D2, proj_join, /*n_out_flds*/joinAttrTypes.length, numBuf);
+            //   Tuple resultTuple;
+            //   System.out.println("Result Tuple:");
+            //   while ((resultTuple = inlj.get_next()) != null) {
+            //     resultTuple.print(joinAttrTypes);
+            //   }
+            //   System.out.println("get_next done.");
+            //   inlj.close();
+            // } catch (Exception e) {
+            //   e.printStackTrace();
+            //   System.out.println("DJOIN using index failed.");
+            // }
+
+            // 1) get top‐K rel1 tuples nearest target
+            LSHFIndexFile idx1 = new LSHFIndexFile(relName1 + "_" + QA1);
+            LSHFFileScan  scan1 = new LSHFFileScan(idx1, heapFile1, targetVector);
+            KeyClass startKey1 = new Vector100DKey(idx1.computeHash(targetVector, 0, idx1.getH()));
+            Tuple[] outerTuples = scan1.LSHFFileNNScan(
+                startKey1, K1, attrTypes1, QA1);
+
+            // 2) for each outer, do LSH range on rel2
+            for (Tuple t1 : outerTuples) {
+              Vector100Dtype v1 = t1.get100DVectFld(QA1);
+              LSHFIndexFile idx2 = new LSHFIndexFile(relName2 + "_" + QA2);
+              LSHFFileScan  scan2 = new LSHFFileScan(idx2, heapFile2, v1);
+              KeyClass startKey2 = new Vector100DKey(idx2.computeHash(v1, 0, idx2.getH()));
+              // Tuple[] innerTuples = scan2.LSHFFileRangeScan(
+              //     startKey2, D2, attrTypes2, QA2);
+              Tuple[] innerTuples = scan2.LSHFFileNNScan(
+                startKey2, D2, attrTypes2, QA2);
+
+              System.out.println("NN DJOIN result:");
+              for (Tuple t2 : innerTuples) {
+                Tuple out = new Tuple();
+                out.setHdr((short)joinAttrTypes.length, joinAttrTypes, Rsizes);
+                Projection.Join(
+                   t1, attrTypes1,
+                   t2, attrTypes2,
+                   out, proj_join, proj_join.length);
+                out.print(joinAttrTypes);
               }
-              System.out.println("get_next done.");
-              inlj.close();
-            } catch (Exception e) {
-              e.printStackTrace();
-              System.out.println("DJOIN using index failed.");
             }
-          }
-          else if (qs.getUseIndex() && !qs2.getUseIndex()) {
+
+          } else if (qs.getUseIndex() && !qs2.getUseIndex()) {
             System.out.println("Using index for DJOIN query on first query, not using index for DJOIN query on second query...");
             int QA1 = qs.getQueryField();
             int QA2 = qs2.getQueryField();
@@ -256,11 +334,9 @@ public class query2 {
               e.printStackTrace();
               System.out.println("DJOIN using index failed.");
             }
-          }
-          else if (!qs.getUseIndex() && qs2.getUseIndex()) {
+          } else if (!qs.getUseIndex() && qs2.getUseIndex()) {
             System.out.println("Not using index for DJOIN query on first query, using index for DJOIN query on second query...");
-          }
-          else {
+          } else {
             System.out.println("Not using index for DJOIN query on first query, not using index for DJOIN query on second query...");
             CondExpr[] outFilter = new CondExpr[2];
             outFilter[0] = new CondExpr();
