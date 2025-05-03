@@ -76,6 +76,7 @@ public class LSHFFileScan /*extends IndexFileScan*/ implements GlobalConst {
 
         // A set to record the unique identifiers (RIDs) of the tuples we've already seen.
         HashSet<String> seen = new HashSet<>();
+        List<Tuple> allCandidates = new ArrayList<>();
         
         while (!foundSatisfactory && ignoreBits <= bitStr.length()) {
             // Calculate lower and upper bounds based on the current precision.
@@ -86,14 +87,14 @@ public class LSHFFileScan /*extends IndexFileScan*/ implements GlobalConst {
                 System.out.println("[LSHFFileRangeScan] ignoreBits: " + ignoreBits +
                                    ", Range: [" + lowerBound + ", " + upperBound + "]");
             }
-            // For simplicity, collect candidates from all layers.
-            List<Tuple> allCandidates = new ArrayList<>();
+
+            // Collect candidates from all layers.            
             int totalCount = 0;
             for (int layer = 0; layer < L; layer++) {
                 try {
                     BTreeFile btree = lshfIndexFile.getTree(layer);
                     // Create a range scan using lo_key and hi_key.
-                    // Here we build KeyClass objects (e.g., IntegerKey) from the integer bounds.
+                    // Here we build KeyClass objects from the integer bounds.
                     KeyClass loKey = new IntegerKey(lowerBound);
                     KeyClass hiKey = new IntegerKey(upperBound);
                     BTFileScan treeScan = (BTFileScan) btree.new_scan(loKey, hiKey);
