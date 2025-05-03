@@ -375,26 +375,43 @@ public class query2 {
           } else if (!qs.getUseIndex() && qs2.getUseIndex()) {
             // nn NH
             // **File Scan and Sort for NN (using Sort iterator)**
+            CondExpr[] outFilter = new CondExpr[2];
+            outFilter[0] = new CondExpr();
+            outFilter[0].next = null;
+            outFilter[0].op = new AttrOperator(AttrOperator.aopLE);
+            outFilter[0].type1 = new AttrType(AttrType.attrSymbol);
+            outFilter[0].type2 = new AttrType(AttrType.attrSymbol);
+            outFilter[0].operand1.symbol = new FldSpec(  // the first relation is outer
+              new RelSpec(RelSpec.outer),
+              qs.getQueryField()
+            );
+            outFilter[0].operand2.symbol = new FldSpec(  // the second relation is inner
+              new RelSpec(RelSpec.innerRel),
+              qs2.getQueryField()
+            );
+            outFilter[0].distance = qs2.getThreshold();
+            outFilter[1] = null;
+
             TupleOrder[] order = new TupleOrder[2];
             order[0] = new TupleOrder(TupleOrder.Ascending);
             order[1] = new TupleOrder(TupleOrder.Descending);
 
-            FileScan fileScan = new FileScan(
+            FileScan am = new FileScan(
               relName1,
               attrTypes1,
               Ssizes,
               (short) attrTypes1.length,
-              outAttrTypes,
-              qs.getOutputFields().length,
-              projlist,
+              attrTypes1,
+              attrTypes1.length,
+              proj_rel1,
               null
             );
 
             Sort sortIterator = new Sort(
-              outAttrTypes,
-              (short) outAttrTypes.length,
+              attrTypes1,
+              (short) attrTypes1.length,
               Ssizes,
-              fileScan,
+              am,
               qs.getQueryField(),
               order[0],
               32,
@@ -433,7 +450,7 @@ public class query2 {
             }
             
             sortIterator.close();
-            fileScan.close();
+            am.close();
 
             // Iterator inlj;
             // FldSpec[] inverse_proj_join = new FldSpec[qs.getOutputFields().length + qs2.getOutputFields().length];
